@@ -1,7 +1,8 @@
-package wumpusworld;
+package wumpusworld.dominio;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Objects;
 
 /**
  * Agente baseado em regras simples.
@@ -44,9 +45,14 @@ public class AgenteInteligente {
     // Guarda o caminho conhecido entre a casa inicial e a posição atual.
     // Voltas repetidas são retiradas para tornar o retorno mais curto.
     private final ArrayList<int[]> caminhoPercorrido = new ArrayList<>();
-    private final Random sorteador = new Random();
+    private final Random sorteador;
 
     public AgenteInteligente() {
+        this(new Random());
+    }
+
+    public AgenteInteligente(Random sorteador) {
+        this.sorteador = Objects.requireNonNull(sorteador);
         visitas = new int[Mundo.TAMANHO][Mundo.TAMANHO];
         risco = new int[Mundo.TAMANHO][Mundo.TAMANHO];
         percepcaoRegistrada = new boolean[Mundo.TAMANHO][Mundo.TAMANHO];
@@ -125,18 +131,29 @@ public class AgenteInteligente {
 
         int direcaoEscolhida = melhoresDirecoes[
                 sorteador.nextInt(quantidadeDeMelhores)];
-        linha = linha + DIRECOES[direcaoEscolhida][0];
-        coluna = coluna + DIRECOES[direcaoEscolhida][1];
-        visitas[linha][coluna]++;
-
-        registrarPosicaoNoCaminho();
-        quantidadeDeMovimentos++;
-        alterarPontuacao(CUSTO_MOVIMENTO);
+        mover(mundo, Direcao.peloComando(COMANDOS[direcaoEscolhida]));
 
         return NOMES[direcaoEscolhida]
                 + " | risco=" + risco[linha][coluna]
                 + " | visitas=" + visitas[linha][coluna]
                 + " | nota=" + melhorNota;
+    }
+
+    /** Movimento solicitado pelo jogador; bater na borda não consome pontos. */
+    public boolean mover(Mundo mundo, Direcao direcao) {
+        Objects.requireNonNull(direcao);
+        int novaLinha = linha + direcao.getVariacaoLinha();
+        int novaColuna = coluna + direcao.getVariacaoColuna();
+        if (!vivo || !mundo.estaDentroDoMapa(novaLinha, novaColuna)) {
+            return false;
+        }
+        linha = novaLinha;
+        coluna = novaColuna;
+        visitas[linha][coluna]++;
+        registrarPosicaoNoCaminho();
+        quantidadeDeMovimentos++;
+        alterarPontuacao(CUSTO_MOVIMENTO);
+        return true;
     }
 
     /**

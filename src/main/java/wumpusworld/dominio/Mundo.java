@@ -1,7 +1,7 @@
-package wumpusworld;
+package wumpusworld.dominio;
 
 /**
- * A classe Mundo cria e mostra o mapa.
+ * Representa o mapa e calcula as percepções do ambiente.
  * Cada posição da matriz possui uma linha e uma coluna.
  */
 public class Mundo {
@@ -127,65 +127,7 @@ public class Mundo {
         return existeVizinho(linha, coluna, WUMPUS);
     }
 
-    /** Mostra os sinais existentes ao redor do agente. */
-    public void mostrarPercepcoes(AgenteInteligente agente) {
-        int linha = agente.getLinha();
-        int coluna = agente.getColuna();
-        boolean percebeuAlgo = false;
-
-        System.out.print("Percepções: ");
-
-        if (temBrisa(linha, coluna)) {
-            System.out.print("BRISA  ");
-            percebeuAlgo = true;
-        }
-
-        if (temFedor(linha, coluna)) {
-            System.out.print("FEDOR  ");
-            percebeuAlgo = true;
-        }
-
-        if (mapa[linha][coluna] == OURO) {
-            System.out.print("BRILHO  ");
-            percebeuAlgo = true;
-        }
-
-        if (!percebeuAlgo) {
-            System.out.print("NENHUMA");
-        }
-
-        System.out.println();
-    }
-
-    /**
-     * Durante o jogo, ? representa uma posição desconhecida e + uma posição
-     * visitada. No final, revelarTudo permite discutir o mapa real com a turma.
-     */
-    public void mostrar(AgenteInteligente agente, boolean revelarTudo) {
-        System.out.print("      ");
-        for (int coluna = 0; coluna < TAMANHO; coluna++) {
-            System.out.print(coluna + "   ");
-        }
-        System.out.println("  COLUNAS");
-
-        for (int linha = 0; linha < TAMANHO; linha++) {
-            System.out.print("  " + linha + "  ");
-
-            for (int coluna = 0; coluna < TAMANHO; coluna++) {
-                if (linha == agente.getLinha()
-                        && coluna == agente.getColuna()) {
-                    System.out.print(agente.estaVivo() ? "[A] " : "[X] ");
-                } else if (revelarTudo) {
-                    System.out.print("[" + mapa[linha][coluna] + "] ");
-                } else if (visitado[linha][coluna]) {
-                    System.out.print("[+] ");
-                } else {
-                    System.out.print("[?] ");
-                }
-            }
-
-            System.out.println();
-        }
-        System.out.println("LINHAS");
+    public boolean foiVisitada(int linha, int coluna) {
+        return visitado[linha][coluna];
     }
 }
