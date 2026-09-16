@@ -1,0 +1,17 @@
+FONTES UTILIZADAS
+=================
+
+DejaVuSans.ttf e DejaVuSans-Bold.ttf
+Projeto DejaVu Fonts — https://dejavu-fonts.github.io/
+
+Licença: DejaVu Fonts License (derivada da Bitstream Vera Fonts License),
+que permite uso, redistribuição e modificação, inclusive em pacotes
+comerciais, sem custo. O texto completo da licença está disponível em
+https://dejavu-fonts.github.io/License.html
+
+Motivo da escolha: cobertura completa da acentuação do português
+(à, á, â, ã, ç, é, ê, í, ó, ô, õ, ú) e excelente legibilidade em
+tamanhos pequenos, o que importa nos rótulos do tabuleiro.
+
+As fontes são carregadas em tempo de execução pela extensão gdx-freetype,
+que as rasteriza no tamanho exato pedido por cada painel.
