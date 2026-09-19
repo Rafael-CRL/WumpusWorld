@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
@@ -80,7 +81,7 @@ public final class TelaDaPartida extends ScreenAdapter {
     private float relogioDoPasso;
     private float tempoDesdeOPasso = 999f;
     private int indiceDaVelocidade = VELOCIDADE_PADRAO;
-    private boolean pausada;
+    private EstadoDoJogo estado = EstadoDoJogo.PARADO;
     private boolean mostrarMapaDeRisco = true;
 
     /** Partículas de poeira que dão profundidade ao fundo. */
@@ -177,18 +178,20 @@ public final class TelaDaPartida extends ScreenAdapter {
             @Override
             public boolean keyDown(int tecla) {
                 switch (tecla) {
-                    case Input.Keys.SPACE -> pausada = !pausada;
+                    case Input.Keys.SPACE -> alternarPausa();
                     case Input.Keys.ENTER, Input.Keys.NUMPAD_ENTER -> {
-                        pausada = true;
-                        executarPasso();
+                        if (estado == EstadoDoJogo.JOGANDO
+                                || estado == EstadoDoJogo.PAUSADO) {
+                            estado = EstadoDoJogo.PAUSADO;
+                            executarPasso();
+                        }
                     }
                     case Input.Keys.PLUS, Input.Keys.EQUALS,
                             Input.Keys.NUMPAD_ADD -> indiceDaVelocidade =
                             Math.min(VELOCIDADES.length - 1, indiceDaVelocidade + 1);
                     case Input.Keys.MINUS, Input.Keys.NUMPAD_SUBTRACT ->
                             indiceDaVelocidade = Math.max(0, indiceDaVelocidade - 1);
-                    case Input.Keys.R -> reiniciar(partida.getMundo().reiniciar());
-                    case Input.Keys.M -> reiniciar(null);
+                    case Input.Keys.R -> reiniciar();
                     case Input.Keys.H -> mostrarMapaDeRisco = !mostrarMapaDeRisco;
                     case Input.Keys.ESCAPE -> Gdx.app.exit();
                     default -> {
@@ -197,18 +200,38 @@ public final class TelaDaPartida extends ScreenAdapter {
                 }
                 return true;
             }
+
+            @Override
+            public boolean touchDown(int x, int y, int ponteiro, int botao) {
+                Vector2 ponto = viewport.unproject(new Vector2(x, y));
+                switch (barraSuperior.acaoNoPonto(ponto.x, ponto.y, estado)) {
+                    case JOGAR -> estado = EstadoDoJogo.JOGANDO;
+                    case PAUSAR -> alternarPausa();
+                    case REINICIAR -> reiniciar();
+                    case NENHUMA -> {
+                        return false;
+                    }
+                }
+                return true;
+            }
         };
     }
 
-    /** Recomeça a simulação; {@code null} sorteia uma fase inteiramente nova. */
-    private void reiniciar(wumpusworld.nucleo.Mundo mundo) {
-        partida = mundo == null
-                ? Partida.comFaseSorteada(sorteador)
-                : new Partida(mundo, new AgenteInteligente());
+    private void alternarPausa() {
+        if (estado == EstadoDoJogo.JOGANDO) {
+            estado = EstadoDoJogo.PAUSADO;
+        } else if (estado == EstadoDoJogo.PAUSADO) {
+            estado = EstadoDoJogo.JOGANDO;
+        }
+    }
+
+    /** Sorteia uma nova fase e aguarda o início pelo botão Jogar. */
+    private void reiniciar() {
+        partida = Partida.comFaseSorteada(sorteador);
 
         relogioDoPasso = 0f;
         tempoDesdeOPasso = 999f;
-        pausada = false;
+        estado = EstadoDoJogo.PARADO;
         efeitos.limpar();
         camadaResultado.reiniciar();
         prepararLayout();
@@ -231,10 +254,9 @@ public final class TelaDaPartida extends ScreenAdapter {
         efeitos.atualizar(delta);
         atualizarPoeira(delta);
 
-        boolean encerrada = partida.getSituacao().encerrada();
-        camadaResultado.atualizar(delta, encerrada);
+        camadaResultado.atualizar(delta, estado == EstadoDoJogo.FIM);
 
-        if (!pausada && !encerrada) {
+        if (estado == EstadoDoJogo.JOGANDO) {
             relogioDoPasso += delta;
             if (relogioDoPasso >= intervaloAtual()) {
                 relogioDoPasso = 0f;
@@ -274,6 +296,9 @@ public final class TelaDaPartida extends ScreenAdapter {
         }
         tempoDesdeOPasso = 0f;
         reagirAoPasso();
+        if (partida.getSituacao().encerrada()) {
+            estado = EstadoDoJogo.FIM;
+        }
     }
 
     /** Traduz os acontecimentos do passo em efeitos visuais. */
@@ -343,7 +368,7 @@ public final class TelaDaPartida extends ScreenAdapter {
         formas.begin(ShapeRenderer.ShapeType.Filled);
 
         desenharFundo();
-        barraSuperior.desenharFormas(formas, partida, animacao);
+        barraSuperior.desenharFormas(formas, estado);
         painelTabuleiro.desenharFormas(formas, partida, animacao);
         painelStatus.desenharFormas(formas, partida, animacao);
         painelRegistro.desenharFormas(formas);
@@ -356,8 +381,7 @@ public final class TelaDaPartida extends ScreenAdapter {
         lote.setProjectionMatrix(camera.combined);
         lote.begin();
 
-        barraSuperior.desenharTextos(lote, partida, animacao,
-                VELOCIDADES[indiceDaVelocidade]);
+        barraSuperior.desenharTextos(lote, estado);
         painelTabuleiro.desenharTextos(lote, partida, animacao);
         painelStatus.desenharTextos(lote, partida);
         painelRegistro.desenharTextos(lote, partida.getRegistro().size());
@@ -392,7 +416,7 @@ public final class TelaDaPartida extends ScreenAdapter {
                 0f, 1f);
 
         return new EstadoDaAnimacao(tempo, progressoDoPasso, progressoDoDisparo,
-                mostrarMapaDeRisco, pausada);
+                mostrarMapaDeRisco);
     }
 
     /**

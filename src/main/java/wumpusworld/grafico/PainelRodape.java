@@ -37,7 +37,7 @@ public final class PainelRodape {
 
     private static final String ATALHOS =
             "ESPAÇO pausa  ·  ENTER avança um passo  ·  + / −  velocidade  ·  "
-            + "R reinicia a fase  ·  M sorteia um novo mapa  ·  "
+            + "R sorteia um novo mapa  ·  "
             + "H mostra o risco  ·  ESC encerra";
 
     private final Ativos ativos;

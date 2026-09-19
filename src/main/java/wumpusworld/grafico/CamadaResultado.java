@@ -164,7 +164,7 @@ public final class CamadaResultado {
                         ? Paleta.OURO : Paleta.TEXTO_FRACO, suave), suave);
 
         Desenho.textoCentralizado(lote, ativos.fonteMiuda,
-                "R reinicia esta fase   ·   M sorteia um novo mapa   ·   ESC encerra",
+                "R sorteia um novo mapa   ·   ESC encerra",
                 alvo.centroX(), alvo.y() + 36f,
                 Paleta.comAlfa(Paleta.TEXTO_FRACO, suave));
     }

@@ -7,8 +7,7 @@ package wumpusworld.grafico;
  * @param progressoDoPasso    0 a 1: o quanto o agente já andou entre duas casas
  * @param progressoDoDisparo  0 a 1: o quanto a flecha já voou (1 = sem disparo)
  * @param mostrarMapaDeRisco  desenha as suspeitas que o agente memorizou
- * @param pausada             a simulação está em pausa
  */
 public record EstadoDaAnimacao(float tempo, float progressoDoPasso,
-        float progressoDoDisparo, boolean mostrarMapaDeRisco, boolean pausada) {
+        float progressoDoDisparo, boolean mostrarMapaDeRisco) {
 }
