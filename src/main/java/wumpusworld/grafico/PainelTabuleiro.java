@@ -116,8 +116,7 @@ public final class PainelTabuleiro {
     public void desenharFormas(ShapeRenderer formas, Partida partida,
             EstadoDaAnimacao animacao) {
 
-        Desenho.sombra(formas, area, 16f, 0.5f);
-        Desenho.painel(formas, area, 16f, Paleta.PAINEL, Paleta.BORDA, 1.5f);
+        Desenho.painel(formas, area, 4f, Paleta.PAINEL, Paleta.BORDA, 1f);
 
         // Leito do tabuleiro, um pouco mais escuro que o painel.
         Desenho.caixa(formas,
@@ -170,9 +169,7 @@ public final class PainelTabuleiro {
                 Desenho.caixa(formas, casaX, casaY, lado, lado, 9f, fundo);
 
                 // Contorno sutil, mais forte nas casas já conhecidas.
-                float alfaDaBorda = visitada || revelar ? 0.85f : 0.35f;
-                desenharContornoDaCasa(formas, casaX, casaY,
-                        Paleta.comAlfa(Paleta.GRADE, alfaDaBorda));
+                desenharContornoDaCasa(formas, casaX, casaY, Paleta.GRADE);
 
                 // Mapa de calor das suspeitas que o agente construiu.
                 if (animacao.mostrarMapaDeRisco() && !visitada && !revelar) {
@@ -180,24 +177,17 @@ public final class PainelTabuleiro {
                     if (risco > 0) {
                         // Um véu leve, só o bastante para ler a hierarquia
                         // entre as casas mais e menos suspeitas.
-                        float intensidade = 0.05f
-                                + 0.11f * (risco / (float) maiorRisco);
                         Desenho.caixa(formas, casaX + 2f, casaY + 2f,
-                                lado - 4f, lado - 4f, 8f,
-                                Paleta.comAlfa(Paleta.PERIGO, intensidade));
+                                lado - 4f, lado - 4f, 4f, Paleta.PERIGO);
                         Desenho.contorno(formas, casaX + 2f, casaY + 2f,
-                                lado - 4f, lado - 4f, 8f, 1.4f,
-                                Paleta.comAlfa(Paleta.PERIGO,
-                                        0.25f + intensidade));
+                                lado - 4f, lado - 4f, 4f, 1f, Paleta.PERIGO);
                     }
                 }
 
                 // Destaque pulsante ao redor da casa ocupada pelo agente.
                 if (atual && !partida.getSituacao().encerrada()) {
-                    float pulso = Desenho.pulsar(animacao.tempo(), 3.0f);
                     desenharMoldura(formas, casaX, casaY,
-                            Paleta.comAlfa(Paleta.AGENTE, 0.35f + pulso * 0.45f),
-                            2.4f);
+                            Paleta.AGENTE, 1f);
                 }
 
                 // Selos das percepções sentidas em casas já conhecidas.
@@ -254,8 +244,7 @@ public final class PainelTabuleiro {
             return;
         }
 
-        Color cor = Paleta.comAlfa(
-                agente.possuiOuro() ? Paleta.OURO : Paleta.INICIO, 0.42f);
+        Color cor = agente.possuiOuro() ? Paleta.OURO : Paleta.INICIO;
 
         for (int indice = 0; indice < caminho.size() - 1; indice++) {
             Posicao de = caminho.get(indice);
@@ -318,12 +307,6 @@ public final class PainelTabuleiro {
 
         Color cor = disparo.acertou() ? Paleta.ALERTA : Paleta.TEXTO_SUAVE;
 
-        // Rastro do voo.
-        Desenho.linha(formas,
-                centroX(disparo.origem().coluna()),
-                centroY(disparo.origem().linha()),
-                cx, cy, 2f, Paleta.comAlfa(cor, 0.25f * (1f - fator)));
-
         Icones.flecha(formas, cx, cy, disparo.direcao(), lado * 0.42f, cor);
     }
 
@@ -383,12 +366,10 @@ public final class PainelTabuleiro {
         for (int linha = 0; linha < Mundo.TAMANHO; linha++) {
             for (int coluna = 0; coluna < Mundo.TAMANHO; coluna++) {
                 boolean visitada = mundo.foiVisitada(linha, coluna);
-                float alfa = visitada || revelar ? 0.42f : 0.20f;
-
                 Desenho.texto(lote, ativos.fonteMiuda,
                         linha + "," + coluna,
                         x(coluna) + 8f, y(linha) + 17f,
-                        Paleta.comAlfa(Paleta.TEXTO_FRACO, alfa));
+                        Paleta.TEXTO_FRACO);
 
                 if (animacao.mostrarMapaDeRisco() && !visitada && !revelar) {
                     int risco = agente.getRisco(linha, coluna);
@@ -397,7 +378,7 @@ public final class PainelTabuleiro {
                         Desenho.textoDireita(lote, ativos.fonteMiuda,
                                 "RISCO " + risco,
                                 x(coluna) + lado - 8f, y(linha) + lado - 12f,
-                                Paleta.comAlfa(Paleta.PERIGO, 0.9f));
+                                Paleta.PERIGO);
                     }
                 }
             }
@@ -405,6 +386,6 @@ public final class PainelTabuleiro {
 
         Desenho.textoCentralizado(lote, ativos.fonteMiuda, "INÍCIO",
                 centroX(0), y(0) + lado - 8f,
-                Paleta.comAlfa(Paleta.INICIO, 0.85f));
+                Paleta.INICIO);
     }
 }

@@ -16,6 +16,7 @@ public final class BarraSuperior {
     private Area botaoJogar = area;
     private Area botaoPausar = area;
     private Area botaoReiniciar = area;
+    private Acao acaoEmHover = Acao.NENHUMA;
 
     public enum Acao {
         JOGAR,
@@ -42,23 +43,23 @@ public final class BarraSuperior {
 
     public void desenharFormas(ShapeRenderer formas, EstadoDoJogo estado) {
 
-        Desenho.sombra(formas, area, 16f, 0.45f);
-        Desenho.painel(formas, area, 16f, Paleta.PAINEL, Paleta.BORDA, 1.5f);
+        Desenho.painel(formas, area, 4f, Paleta.PAINEL, Paleta.BORDA, 1f);
 
-        botao(formas, botaoJogar, Paleta.AGENTE, estado == EstadoDoJogo.PARADO);
+        botao(formas, botaoJogar, Paleta.AGENTE, estado == EstadoDoJogo.PARADO,
+                acaoEmHover == Acao.JOGAR);
         botao(formas, botaoPausar, Paleta.ALERTA,
-                estado == EstadoDoJogo.JOGANDO || estado == EstadoDoJogo.PAUSADO);
-        botao(formas, botaoReiniciar, Paleta.NEUTRO, true);
+                estado == EstadoDoJogo.JOGANDO || estado == EstadoDoJogo.PAUSADO,
+                acaoEmHover == Acao.PAUSAR);
+        botao(formas, botaoReiniciar, Paleta.NEUTRO, true,
+                acaoEmHover == Acao.REINICIAR);
     }
 
     private void botao(ShapeRenderer formas, Area alvo, Color cor,
-            boolean habilitado) {
-        Color fundo = habilitado ? Paleta.comAlfa(cor, 0.12f)
-                : Paleta.comAlfa(Paleta.NEUTRO, 0.05f);
-        Color borda = habilitado ? Paleta.comAlfa(cor, 0.45f)
-                : Paleta.comAlfa(Paleta.NEUTRO, 0.15f);
-        Desenho.painel(formas, alvo, 8f,
-                fundo, borda, 1.2f);
+            boolean habilitado, boolean hover) {
+        Color fundo = habilitado && hover ? Paleta.BORDA
+                : habilitado ? Paleta.PAINEL_DESTAQUE : Paleta.PAINEL_INTERNO;
+        Color borda = habilitado ? cor : Paleta.BORDA;
+        Desenho.painel(formas, alvo, 4f, fundo, borda, 1f);
     }
 
     public void desenharTextos(SpriteBatch lote, EstadoDoJogo estado) {
@@ -99,6 +100,10 @@ public final class BarraSuperior {
             return Acao.REINICIAR;
         }
         return Acao.NENHUMA;
+    }
+
+    public void atualizarHover(float x, float y, EstadoDoJogo estado) {
+        acaoEmHover = acaoNoPonto(x, y, estado);
     }
 
     private static boolean contem(Area area, float x, float y) {

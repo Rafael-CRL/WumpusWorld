@@ -6,7 +6,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.ScreenAdapter;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -16,13 +15,8 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
-import wumpusworld.nucleo.AgenteInteligente;
-import wumpusworld.nucleo.DisparoDeFlecha;
-import wumpusworld.nucleo.EventoJogo;
 import wumpusworld.nucleo.Partida;
-import wumpusworld.nucleo.Posicao;
 import wumpusworld.nucleo.Situacao;
-import wumpusworld.nucleo.TipoEvento;
 
 /**
  * Tela principal: monta o layout, controla o relógio da simulação e desenha.
@@ -72,7 +66,6 @@ public final class TelaDaPartida extends ScreenAdapter {
     private final PainelRodape painelRodape;
     private final BarraSuperior barraSuperior;
     private final CamadaResultado camadaResultado;
-    private final Efeitos efeitos = new Efeitos();
 
     private final Random sorteador = new Random();
     private Partida partida = new Partida();
@@ -83,13 +76,6 @@ public final class TelaDaPartida extends ScreenAdapter {
     private int indiceDaVelocidade = VELOCIDADE_PADRAO;
     private EstadoDoJogo estado = EstadoDoJogo.PARADO;
     private boolean mostrarMapaDeRisco = true;
-
-    /** Partículas de poeira que dão profundidade ao fundo. */
-    private final float[] poeiraX = new float[46];
-    private final float[] poeiraY = new float[46];
-    private final float[] poeiraRaio = new float[46];
-    private final float[] poeiraVelocidade = new float[46];
-    private final float[] poeiraAlfa = new float[46];
 
     public TelaDaPartida(Ativos ativos, SpriteBatch lote, ShapeRenderer formas) {
         this.ativos = ativos;
@@ -111,7 +97,6 @@ public final class TelaDaPartida extends ScreenAdapter {
                 GL20.GL_ONE, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         prepararLayout();
-        prepararPoeira();
         Gdx.input.setInputProcessor(criarControles());
     }
 
@@ -159,16 +144,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         camadaResultado.definirArea(cartao, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
     }
 
-    private void prepararPoeira() {
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
-            poeiraY[indice] = MathUtils.random(0f, ALTURA_VIRTUAL);
-            poeiraRaio[indice] = MathUtils.random(0.8f, 2.4f);
-            poeiraVelocidade[indice] = MathUtils.random(3f, 14f);
-            poeiraAlfa[indice] = MathUtils.random(0.05f, 0.18f);
-        }
-    }
-
     // -----------------------------------------------------------------------
     //  Controles de teclado (recurso extra; a simulação anda sozinha)
     // -----------------------------------------------------------------------
@@ -214,6 +189,13 @@ public final class TelaDaPartida extends ScreenAdapter {
                 }
                 return true;
             }
+
+            @Override
+            public boolean mouseMoved(int x, int y) {
+                Vector2 ponto = viewport.unproject(new Vector2(x, y));
+                barraSuperior.atualizarHover(ponto.x, ponto.y, estado);
+                return false;
+            }
         };
     }
 
@@ -232,7 +214,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         relogioDoPasso = 0f;
         tempoDesdeOPasso = 999f;
         estado = EstadoDoJogo.PARADO;
-        efeitos.limpar();
         camadaResultado.reiniciar();
         prepararLayout();
     }
@@ -251,8 +232,6 @@ public final class TelaDaPartida extends ScreenAdapter {
     private void atualizar(float delta) {
         tempo += delta;
         tempoDesdeOPasso += delta;
-        efeitos.atualizar(delta);
-        atualizarPoeira(delta);
 
         camadaResultado.atualizar(delta, estado == EstadoDoJogo.FIM);
 
@@ -265,16 +244,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         }
 
         painelRegistro.atualizar(partida.getRegistro());
-    }
-
-    private void atualizarPoeira(float delta) {
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            poeiraY[indice] += poeiraVelocidade[indice] * delta;
-            if (poeiraY[indice] > ALTURA_VIRTUAL) {
-                poeiraY[indice] = -4f;
-                poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
-            }
-        }
     }
 
     private float intervaloAtual() {
@@ -295,56 +264,8 @@ public final class TelaDaPartida extends ScreenAdapter {
             return;
         }
         tempoDesdeOPasso = 0f;
-        reagirAoPasso();
         if (partida.getSituacao().encerrada()) {
             estado = EstadoDoJogo.FIM;
-        }
-    }
-
-    /** Traduz os acontecimentos do passo em efeitos visuais. */
-    private void reagirAoPasso() {
-        Posicao destino = partida.getDestinoDoPasso();
-        float centroX = painelTabuleiro.centroX(destino.coluna());
-        float centroY = painelTabuleiro.centroY(destino.linha());
-        float lado = painelTabuleiro.getLado();
-
-        for (EventoJogo evento : partida.getEventosDoUltimoPasso()) {
-            if (evento.tipo() == TipoEvento.TESOURO) {
-                efeitos.clarao(Paleta.OURO, 0.22f);
-                efeitos.onda(centroX, centroY, lado * 1.5f, Paleta.OURO, 0.9f);
-                efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_OURO,
-                        centroX, centroY + lado * 0.4f, Paleta.OURO);
-            }
-        }
-
-        DisparoDeFlecha disparo = partida.getUltimoDisparo();
-        if (disparo != null && disparo.acertou()) {
-            float alvoX = painelTabuleiro.centroX(disparo.destino().coluna());
-            float alvoY = painelTabuleiro.centroY(disparo.destino().linha());
-            efeitos.tremer(4.5f);
-            efeitos.onda(alvoX, alvoY, lado * 1.3f, Paleta.ALERTA, 0.7f);
-            efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_WUMPUS,
-                    alvoX, alvoY + lado * 0.4f, Paleta.ALERTA);
-        }
-
-        switch (partida.getSituacao()) {
-            case MORTE -> {
-                efeitos.tremer(11f);
-                efeitos.clarao(Paleta.PERIGO, 0.45f);
-                efeitos.onda(centroX, centroY, lado * 2.0f, Paleta.PERIGO, 1.1f);
-                efeitos.textoFlutuante(
-                        String.valueOf(AgenteInteligente.PENALIDADE_MORTE),
-                        centroX, centroY + lado * 0.4f, Paleta.PERIGO);
-            }
-            case VITORIA -> {
-                efeitos.clarao(Paleta.SUCESSO, 0.32f);
-                efeitos.onda(centroX, centroY, lado * 2.2f, Paleta.SUCESSO, 1.2f);
-                efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_VITORIA,
-                        centroX, centroY + lado * 0.4f, Paleta.SUCESSO);
-            }
-            default -> {
-                // Passo comum: nenhum efeito especial.
-            }
         }
     }
 
@@ -361,9 +282,9 @@ public final class TelaDaPartida extends ScreenAdapter {
 
         viewport.apply();
 
-        // Passagem 1: todas as formas, com o tremor aplicado à câmera.
+        // Passagem 1: formas da interface.
         habilitarMistura();
-        posicionarCamera(efeitos.getDeslocamentoX(), efeitos.getDeslocamentoY());
+        posicionarCamera(0f, 0f);
         formas.setProjectionMatrix(camera.combined);
         formas.begin(ShapeRenderer.ShapeType.Filled);
 
@@ -373,7 +294,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         painelStatus.desenharFormas(formas, partida, animacao);
         painelRegistro.desenharFormas(formas);
         painelRodape.desenharFormas(formas, tempo);
-        efeitos.desenharOndas(formas);
 
         formas.end();
 
@@ -386,16 +306,14 @@ public final class TelaDaPartida extends ScreenAdapter {
         painelStatus.desenharTextos(lote, partida);
         painelRegistro.desenharTextos(lote, partida.getRegistro().size());
         painelRodape.desenharTextos(lote);
-        efeitos.desenharTextos(lote, ativos.fonteValor);
 
         lote.end();
 
-        // Passagem 3: clarão e cartão de encerramento, já sem tremor.
+        // Passagem 3: cartão de encerramento.
         habilitarMistura();
         posicionarCamera(0f, 0f);
         formas.setProjectionMatrix(camera.combined);
         formas.begin(ShapeRenderer.ShapeType.Filled);
-        efeitos.desenharClarao(formas, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
         camadaResultado.desenharFormas(formas, partida, tempo);
         formas.end();
 
@@ -441,29 +359,10 @@ public final class TelaDaPartida extends ScreenAdapter {
         camera.update();
     }
 
-    /** Degradê da caverna, poeira em suspensão e vinheta nas bordas. */
+    /** Fundo plano da interface. */
     private void desenharFundo() {
-        Desenho.degradeVertical(formas, 0f, 0f, LARGURA_VIRTUAL, ALTURA_VIRTUAL,
-                Paleta.FUNDO_BAIXO, Paleta.FUNDO_ALTO);
-
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            formas.setColor(Paleta.comAlfa(Paleta.AGENTE_BRILHO,
-                    poeiraAlfa[indice]));
-            formas.circle(poeiraX[indice], poeiraY[indice],
-                    poeiraRaio[indice], 10);
-        }
-
-        Color opaco = new Color(0f, 0f, 0f, 0.55f);
-        Color transparente = new Color(0f, 0f, 0f, 0f);
-        float faixa = 130f;
-        formas.rect(0f, 0f, LARGURA_VIRTUAL, faixa,
-                opaco, opaco, transparente, transparente);
-        formas.rect(0f, ALTURA_VIRTUAL - faixa, LARGURA_VIRTUAL, faixa,
-                transparente, transparente, opaco, opaco);
-        formas.rect(0f, 0f, faixa, ALTURA_VIRTUAL,
-                opaco, transparente, transparente, opaco);
-        formas.rect(LARGURA_VIRTUAL - faixa, 0f, faixa, ALTURA_VIRTUAL,
-                transparente, opaco, opaco, transparente);
+        formas.setColor(Paleta.FUNDO_BAIXO);
+        formas.rect(0f, 0f, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
     }
 
     @Override

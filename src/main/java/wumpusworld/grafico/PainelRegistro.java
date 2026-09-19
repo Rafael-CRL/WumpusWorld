@@ -88,20 +88,10 @@ public final class PainelRegistro {
     }
 
     public void desenharFormas(ShapeRenderer formas) {
-        Desenho.sombra(formas, area, 16f, 0.45f);
-        Desenho.painel(formas, area, 16f, Paleta.PAINEL, Paleta.BORDA, 1.5f);
+        Desenho.painel(formas, area, 4f, Paleta.PAINEL, Paleta.BORDA, 1f);
         Desenho.caixa(formas, areaDoConteudo.x() - 6f, areaDoConteudo.y() - 8f,
                 areaDoConteudo.largura() + 12f, areaDoConteudo.altura() + 16f,
-                10f, Paleta.PAINEL_INTERNO);
-
-        // Marcador colorido no início de cada entrada.
-        for (Linha linha : visiveis) {
-            Color cor = Paleta.comAlfa(
-                    Paleta.doEvento(linha.evento().tipo()), linha.alfa());
-            Desenho.caixa(formas, areaDoConteudo.x() + 2f,
-                    linha.y() - linha.altura() + 3f,
-                    3f, linha.altura() - 4f, 1.5f, cor);
-        }
+                4f, Paleta.PAINEL_INTERNO);
     }
 
     public void desenharTextos(SpriteBatch lote, int totalDeEventos) {
@@ -116,9 +106,7 @@ public final class PainelRegistro {
         float larguraDoTexto = areaDoConteudo.largura() - RECUO_DO_TEXTO;
 
         for (Linha linha : visiveis) {
-            Color cor = Paleta.comAlfa(
-                    Paleta.doEvento(linha.evento().tipo()), linha.alfa());
-            ativos.fontePequena.setColor(cor);
+            ativos.fontePequena.setColor(Paleta.TEXTO);
             ativos.fontePequena.draw(lote, textoDe(linha.evento()),
                     x, linha.y(), larguraDoTexto, Align.left, true);
         }

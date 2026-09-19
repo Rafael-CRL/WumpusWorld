@@ -94,8 +94,7 @@ public final class PainelStatus {
     public void desenharFormas(ShapeRenderer formas, Partida partida,
             EstadoDaAnimacao animacao) {
 
-        Desenho.sombra(formas, area, 16f, 0.45f);
-        Desenho.painel(formas, area, 16f, Paleta.PAINEL, Paleta.BORDA, 1.5f);
+        Desenho.painel(formas, area, 4f, Paleta.PAINEL, Paleta.BORDA, 1f);
 
         AgenteInteligente agente = partida.getAgente();
         Percepcoes percepcoes = partida.getPercepcoesAtuais();
@@ -105,15 +104,11 @@ public final class PainelStatus {
         Color corDaPontuacao = agente.getPontuacao() >= 0
                 ? Paleta.SUCESSO : Paleta.PERIGO;
         Desenho.caixa(formas, blocoPontuacao, 12f, Paleta.PAINEL_INTERNO);
-        Desenho.caixa(formas, blocoPontuacao.x(), blocoPontuacao.y(),
-                4f, blocoPontuacao.altura(), 2f, corDaPontuacao);
 
         // Objetivo do momento.
         Color corDoObjetivo = corDaSituacao(partida);
-        Desenho.caixa(formas, blocoObjetivo, 12f,
-                Paleta.comAlfa(corDoObjetivo, 0.12f));
-        Desenho.caixa(formas, blocoObjetivo.x(), blocoObjetivo.y(),
-                4f, blocoObjetivo.altura(), 2f, corDoObjetivo);
+        Desenho.painel(formas, blocoObjetivo, 4f,
+                Paleta.PAINEL_INTERNO, corDoObjetivo, 1f);
 
         for (Area azulejo : azulejos) {
             Desenho.caixa(formas, azulejo, 10f, Paleta.PAINEL_INTERNO);
@@ -121,11 +116,11 @@ public final class PainelStatus {
 
         // Chips das percepções: acesos somente quando o sinal existe.
         desenharChipDePercepcao(formas, chipsDePercepcao[0],
-                percepcoes.brisa() && vivo, Paleta.BRISA, animacao);
+                percepcoes.brisa() && vivo, Paleta.BRISA);
         desenharChipDePercepcao(formas, chipsDePercepcao[1],
-                percepcoes.fedor() && vivo, Paleta.FEDOR, animacao);
+                percepcoes.fedor() && vivo, Paleta.FEDOR);
         desenharChipDePercepcao(formas, chipsDePercepcao[2],
-                percepcoes.brilho() && vivo, Paleta.BRILHO, animacao);
+                percepcoes.brilho() && vivo, Paleta.BRILHO);
 
         // Selos dentro dos chips.
         float seloX = chipsDePercepcao[0].x() + 20f;
@@ -145,28 +140,24 @@ public final class PainelStatus {
     }
 
     private void desenharChipDePercepcao(ShapeRenderer formas, Area chip,
-            boolean ativo, Color cor, EstadoDaAnimacao animacao) {
+            boolean ativo, Color cor) {
         if (ativo) {
-            float pulso = Desenho.pulsar(animacao.tempo(), 4.2f);
-            Desenho.painel(formas, chip, 10f,
-                    Paleta.comAlfa(cor, 0.16f + pulso * 0.06f),
-                    Paleta.comAlfa(cor, 0.55f + pulso * 0.35f), 1.4f);
+            Desenho.painel(formas, chip, 4f, Paleta.PAINEL_DESTAQUE, cor, 1f);
         } else {
-            Desenho.caixa(formas, chip, 10f, Paleta.PAINEL_INTERNO);
+            Desenho.caixa(formas, chip, 4f, Paleta.PAINEL_INTERNO);
         }
     }
 
     private void desenharChipDeInventario(ShapeRenderer formas, Area chip,
             boolean possui, Color cor) {
         if (possui) {
-            Desenho.painel(formas, chip, 10f,
-                    Paleta.comAlfa(cor, 0.16f), Paleta.comAlfa(cor, 0.6f), 1.4f);
+            Desenho.painel(formas, chip, 4f, Paleta.PAINEL_DESTAQUE, cor, 1f);
         } else {
-            Desenho.caixa(formas, chip, 10f, Paleta.PAINEL_INTERNO);
+            Desenho.caixa(formas, chip, 4f, Paleta.PAINEL_INTERNO);
         }
 
         // Pequeno indicador redondo à esquerda do rótulo.
-        formas.setColor(possui ? cor : Paleta.comAlfa(Paleta.TEXTO_FRACO, 0.6f));
+        formas.setColor(possui ? cor : Paleta.TEXTO_FRACO);
         formas.circle(chip.x() + 20f, chip.centroY(), 5.5f, 18);
     }
 

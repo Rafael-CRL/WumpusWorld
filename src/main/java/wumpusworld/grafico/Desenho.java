@@ -37,7 +37,7 @@ public final class Desenho {
     public static void caixa(ShapeRenderer formas, float x, float y,
             float largura, float altura, float raio, Color cor) {
         formas.setColor(cor);
-        float r = Math.min(raio, Math.min(largura, altura) / 2f);
+        float r = Math.min(4f, Math.min(raio, Math.min(largura, altura) / 2f));
 
         if (r <= 0.5f) {
             formas.rect(x, y, largura, altura);
@@ -62,8 +62,8 @@ public final class Desenho {
             float largura, float altura, float raio, float espessura,
             Color cor) {
         formas.setColor(cor);
-        float r = Math.min(raio, Math.min(largura, altura) / 2f);
-        float e = Math.min(espessura, r);
+        float r = Math.min(4f, Math.min(raio, Math.min(largura, altura) / 2f));
+        float e = Math.min(1f, Math.min(espessura, r));
 
         formas.rect(x + r, y, largura - r * 2f, e);
         formas.rect(x + r, y + altura - e, largura - r * 2f, e);
@@ -124,30 +124,6 @@ public final class Desenho {
             Color corDoFundo, Color corDaBorda, float espessura) {
         caixa(formas, area, raio, corDoFundo);
         contorno(formas, area, raio, espessura, corDaBorda);
-    }
-
-    /** Sombra difusa desenhada em camadas translúcidas abaixo do painel. */
-    public static void sombra(ShapeRenderer formas, Area area, float raio,
-            float intensidade) {
-        int camadas = 6;
-        for (int camada = camadas; camada >= 1; camada--) {
-            float expansao = camada * 2.2f;
-            float alfa = intensidade / (camada * 2.6f);
-            caixa(formas,
-                    area.x() - expansao,
-                    area.y() - expansao - 2f,
-                    area.largura() + expansao * 2f,
-                    area.altura() + expansao * 2f,
-                    raio + expansao,
-                    new Color(0f, 0f, 0f, alfa));
-        }
-    }
-
-    /** Retângulo com degradê vertical entre duas cores. */
-    public static void degradeVertical(ShapeRenderer formas, float x, float y,
-            float largura, float altura, Color corDeBaixo, Color corDeCima) {
-        formas.rect(x, y, largura, altura,
-                corDeBaixo, corDeBaixo, corDeCima, corDeCima);
     }
 
     /** Anel preenchido entre dois raios. */

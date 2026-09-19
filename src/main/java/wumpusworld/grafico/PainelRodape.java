@@ -72,8 +72,7 @@ public final class PainelRodape {
     }
 
     public void desenharFormas(ShapeRenderer formas, float tempo) {
-        Desenho.sombra(formas, area, 16f, 0.45f);
-        Desenho.painel(formas, area, 16f, Paleta.PAINEL, Paleta.BORDA, 1.5f);
+        Desenho.painel(formas, area, 4f, Paleta.PAINEL, Paleta.BORDA, 1f);
 
         // Faixa discreta atrás da linha de atalhos.
         Desenho.caixa(formas, area.x() + MARGEM - 6f, area.y() + MARGEM - 8f,
