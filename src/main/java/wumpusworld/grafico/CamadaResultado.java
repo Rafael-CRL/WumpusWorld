@@ -162,11 +162,6 @@ public final class CamadaResultado {
                 agente.possuiOuro() ? "SIM" : "NÃO",
                 Paleta.comAlfa(agente.possuiOuro()
                         ? Paleta.OURO : Paleta.TEXTO_FRACO, suave), suave);
-
-        Desenho.textoCentralizado(lote, ativos.fonteMiuda,
-                "R reinicia esta fase   ·   M sorteia um novo mapa   ·   ESC encerra",
-                alvo.centroX(), alvo.y() + 36f,
-                Paleta.comAlfa(Paleta.TEXTO_FRACO, suave));
     }
 
     private void escreverResumo(SpriteBatch lote, float centroX,

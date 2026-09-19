@@ -3,8 +3,6 @@ package wumpusworld.grafico;
 import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -49,15 +47,10 @@ public final class TelaDaPartida extends ScreenAdapter {
     private static final float MARGEM = 24f;
     private static final float ESPACO = 16f;
     private static final float ALTURA_DA_BARRA = 78f;
-    private static final float ALTURA_DO_RODAPE = 100f;
     private static final float LARGURA_DO_TABULEIRO = 660f;
 
-    /** Intervalo padrão entre dois passos do agente, em segundos. */
+    /** Intervalo fixo entre dois passos do agente, em segundos. */
     private static final float INTERVALO_BASE = 0.62f;
-
-    private static final float[] VELOCIDADES =
-        {0.25f, 0.5f, 1f, 1.5f, 2f, 3f, 4f};
-    private static final int VELOCIDADE_PADRAO = 2;
 
     private final Ativos ativos;
     private final SpriteBatch lote;
@@ -68,7 +61,6 @@ public final class TelaDaPartida extends ScreenAdapter {
     private final PainelTabuleiro painelTabuleiro;
     private final PainelStatus painelStatus;
     private final PainelRegistro painelRegistro;
-    private final PainelRodape painelRodape;
     private final BarraSuperior barraSuperior;
     private final CamadaResultado camadaResultado;
     private final Efeitos efeitos = new Efeitos();
@@ -79,9 +71,6 @@ public final class TelaDaPartida extends ScreenAdapter {
     private float tempo;
     private float relogioDoPasso;
     private float tempoDesdeOPasso = 999f;
-    private int indiceDaVelocidade = VELOCIDADE_PADRAO;
-    private boolean pausada;
-    private boolean mostrarMapaDeRisco = true;
 
     /** Partículas de poeira que dão profundidade ao fundo. */
     private final float[] poeiraX = new float[46];
@@ -101,7 +90,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         painelTabuleiro = new PainelTabuleiro(ativos);
         painelStatus = new PainelStatus(ativos);
         painelRegistro = new PainelRegistro(ativos);
-        painelRodape = new PainelRodape(ativos);
         barraSuperior = new BarraSuperior(ativos);
         camadaResultado = new CamadaResultado(ativos);
 
@@ -111,7 +99,6 @@ public final class TelaDaPartida extends ScreenAdapter {
 
         prepararLayout();
         prepararPoeira();
-        Gdx.input.setInputProcessor(criarControles());
     }
 
     // -----------------------------------------------------------------------
@@ -119,17 +106,16 @@ public final class TelaDaPartida extends ScreenAdapter {
     // -----------------------------------------------------------------------
 
     /**
-     * Divide a resolução virtual entre os cinco blocos da interface:
-     * cabeçalho, tabuleiro, informações, registro e rodapé.
+     * Divide a resolução virtual entre os blocos da interface:
+     * cabeçalho, tabuleiro, informações e registro.
      */
     private void prepararLayout() {
         float larguraUtil = LARGURA_VIRTUAL - MARGEM * 2f;
 
         Area barra = new Area(MARGEM, ALTURA_VIRTUAL - MARGEM - ALTURA_DA_BARRA,
                 larguraUtil, ALTURA_DA_BARRA);
-        Area rodape = new Area(MARGEM, MARGEM, larguraUtil, ALTURA_DO_RODAPE);
 
-        float baseDoMeio = rodape.topo() + ESPACO;
+        float baseDoMeio = MARGEM;
         float alturaDoMeio = barra.y() - ESPACO - baseDoMeio;
 
         Area tabuleiro = new Area(MARGEM, baseDoMeio,
@@ -137,7 +123,7 @@ public final class TelaDaPartida extends ScreenAdapter {
 
         float xDaLateral = tabuleiro.direita() + ESPACO;
         float larguraDaLateral = LARGURA_VIRTUAL - MARGEM - xDaLateral;
-        float alturaDoStatus = 310f;
+        float alturaDoStatus = 340f;
 
         Area status = new Area(xDaLateral,
                 baseDoMeio + alturaDoMeio - alturaDoStatus,
@@ -149,7 +135,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         painelTabuleiro.definirArea(tabuleiro);
         painelStatus.definirArea(status);
         painelRegistro.definirArea(registro);
-        painelRodape.definirArea(rodape);
 
         float alturaDoCartao = 300f;
         Area cartao = new Area(xDaLateral + 8f,
@@ -166,52 +151,6 @@ public final class TelaDaPartida extends ScreenAdapter {
             poeiraVelocidade[indice] = MathUtils.random(3f, 14f);
             poeiraAlfa[indice] = MathUtils.random(0.05f, 0.18f);
         }
-    }
-
-    // -----------------------------------------------------------------------
-    //  Controles de teclado (recurso extra; a simulação anda sozinha)
-    // -----------------------------------------------------------------------
-
-    private InputAdapter criarControles() {
-        return new InputAdapter() {
-            @Override
-            public boolean keyDown(int tecla) {
-                switch (tecla) {
-                    case Input.Keys.SPACE -> pausada = !pausada;
-                    case Input.Keys.ENTER, Input.Keys.NUMPAD_ENTER -> {
-                        pausada = true;
-                        executarPasso();
-                    }
-                    case Input.Keys.PLUS, Input.Keys.EQUALS,
-                            Input.Keys.NUMPAD_ADD -> indiceDaVelocidade =
-                            Math.min(VELOCIDADES.length - 1, indiceDaVelocidade + 1);
-                    case Input.Keys.MINUS, Input.Keys.NUMPAD_SUBTRACT ->
-                            indiceDaVelocidade = Math.max(0, indiceDaVelocidade - 1);
-                    case Input.Keys.R -> reiniciar(partida.getMundo().reiniciar());
-                    case Input.Keys.M -> reiniciar(null);
-                    case Input.Keys.H -> mostrarMapaDeRisco = !mostrarMapaDeRisco;
-                    case Input.Keys.ESCAPE -> Gdx.app.exit();
-                    default -> {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        };
-    }
-
-    /** Recomeça a simulação; {@code null} sorteia uma fase inteiramente nova. */
-    private void reiniciar(wumpusworld.nucleo.Mundo mundo) {
-        partida = mundo == null
-                ? Partida.comFaseSorteada(sorteador)
-                : new Partida(mundo, new AgenteInteligente());
-
-        relogioDoPasso = 0f;
-        tempoDesdeOPasso = 999f;
-        pausada = false;
-        efeitos.limpar();
-        camadaResultado.reiniciar();
-        prepararLayout();
     }
 
     // -----------------------------------------------------------------------
@@ -234,9 +173,9 @@ public final class TelaDaPartida extends ScreenAdapter {
         boolean encerrada = partida.getSituacao().encerrada();
         camadaResultado.atualizar(delta, encerrada);
 
-        if (!pausada && !encerrada) {
+        if (!encerrada) {
             relogioDoPasso += delta;
-            if (relogioDoPasso >= intervaloAtual()) {
+            if (relogioDoPasso >= INTERVALO_BASE) {
                 relogioDoPasso = 0f;
                 executarPasso();
             }
@@ -255,17 +194,13 @@ public final class TelaDaPartida extends ScreenAdapter {
         }
     }
 
-    private float intervaloAtual() {
-        return INTERVALO_BASE / VELOCIDADES[indiceDaVelocidade];
-    }
-
     private float duracaoDoDisparo() {
         return partida.getUltimoDisparo() == null
-                ? 0f : Math.min(0.40f, intervaloAtual() * 0.50f);
+                ? 0f : Math.min(0.40f, INTERVALO_BASE * 0.50f);
     }
 
     private float duracaoDoMovimento() {
-        return Math.min(0.30f, intervaloAtual() * 0.45f);
+        return Math.min(0.30f, INTERVALO_BASE * 0.45f);
     }
 
     private void executarPasso() {
@@ -347,7 +282,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         painelTabuleiro.desenharFormas(formas, partida, animacao);
         painelStatus.desenharFormas(formas, partida, animacao);
         painelRegistro.desenharFormas(formas);
-        painelRodape.desenharFormas(formas, tempo);
         efeitos.desenharOndas(formas);
 
         formas.end();
@@ -356,12 +290,10 @@ public final class TelaDaPartida extends ScreenAdapter {
         lote.setProjectionMatrix(camera.combined);
         lote.begin();
 
-        barraSuperior.desenharTextos(lote, partida, animacao,
-                VELOCIDADES[indiceDaVelocidade]);
+        barraSuperior.desenharTextos(lote, partida, animacao);
         painelTabuleiro.desenharTextos(lote, partida, animacao);
         painelStatus.desenharTextos(lote, partida);
         painelRegistro.desenharTextos(lote, partida.getRegistro().size());
-        painelRodape.desenharTextos(lote);
         efeitos.desenharTextos(lote, ativos.fonteValor);
 
         lote.end();
@@ -392,20 +324,11 @@ public final class TelaDaPartida extends ScreenAdapter {
                 0f, 1f);
 
         return new EstadoDaAnimacao(tempo, progressoDoPasso, progressoDoDisparo,
-                mostrarMapaDeRisco, pausada);
+                true, false);
     }
 
-    /**
-     * Liga a mistura de transparência com a função padrão de composição.
-     *
-     * <p>É preciso repetir isso antes de cada passagem do {@link ShapeRenderer}:
-     * o {@code SpriteBatch} desliga o {@code GL_BLEND} ao terminar, e sem ele
-     * todas as cores translúcidas seriam escritas como se fossem opacas.</p>
-     */
     private void habilitarMistura() {
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        // Cor: composição normal. Alfa: a função separada mantém o quadro
-        // opaco, o que evita véus translúcidos "furarem" a imagem final.
         Gdx.gl.glBlendFuncSeparate(
                 GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
                 GL20.GL_ONE, GL20.GL_ONE_MINUS_SRC_ALPHA);
@@ -417,7 +340,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         camera.update();
     }
 
-    /** Degradê da caverna, poeira em suspensão e vinheta nas bordas. */
     private void desenharFundo() {
         Desenho.degradeVertical(formas, 0f, 0f, LARGURA_VIRTUAL, ALTURA_VIRTUAL,
                 Paleta.FUNDO_BAIXO, Paleta.FUNDO_ALTO);
@@ -452,8 +374,8 @@ public final class TelaDaPartida extends ScreenAdapter {
         Gdx.input.setInputProcessor(null);
     }
 
-    /** Situação atual, exposta para testes e para a barra de título da janela. */
     public Situacao getSituacao() {
         return partida.getSituacao();
     }
 }
+

@@ -94,10 +94,9 @@ public final class PainelRegistro {
                 areaDoConteudo.largura() + 12f, areaDoConteudo.altura() + 16f,
                 10f, Paleta.PAINEL_INTERNO);
 
-        // Marcador colorido no início de cada entrada.
+        // Marcador discreto no início de cada entrada.
         for (Linha linha : visiveis) {
-            Color cor = Paleta.comAlfa(
-                    Paleta.doEvento(linha.evento().tipo()), linha.alfa());
+            Color cor = Paleta.comAlfa(Paleta.BORDA_FORTE, linha.alfa());
             Desenho.caixa(formas, areaDoConteudo.x() + 2f,
                     linha.y() - linha.altura() + 3f,
                     3f, linha.altura() - 4f, 1.5f, cor);
@@ -116,8 +115,7 @@ public final class PainelRegistro {
         float larguraDoTexto = areaDoConteudo.largura() - RECUO_DO_TEXTO;
 
         for (Linha linha : visiveis) {
-            Color cor = Paleta.comAlfa(
-                    Paleta.doEvento(linha.evento().tipo()), linha.alfa());
+            Color cor = Paleta.comAlfa(Paleta.TEXTO_SUAVE, linha.alfa());
             ativos.fontePequena.setColor(cor);
             ativos.fontePequena.draw(lote, textoDe(linha.evento()),
                     x, linha.y(), larguraDoTexto, Align.left, true);

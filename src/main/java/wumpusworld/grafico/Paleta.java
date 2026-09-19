@@ -18,50 +18,50 @@ public final class Paleta {
     }
 
     // Fundo e superfícies -----------------------------------------------------
-    public static final Color FUNDO_BAIXO = cor("070A11");
-    public static final Color FUNDO_ALTO = cor("121A2B");
-    public static final Color PAINEL = cor("141B29");
-    public static final Color PAINEL_INTERNO = cor("0F1520");
-    public static final Color PAINEL_DESTAQUE = cor("1B2434");
-    public static final Color BORDA = cor("253048");
-    public static final Color BORDA_FORTE = cor("3A4B70");
-    public static final Color SOMBRA = new Color(0f, 0f, 0f, 0.45f);
+    public static final Color FUNDO_BAIXO = cor("1A1D24");
+    public static final Color FUNDO_ALTO = cor("1A1D24");
+    public static final Color PAINEL = cor("222630");
+    public static final Color PAINEL_INTERNO = cor("1E212A");
+    public static final Color PAINEL_DESTAQUE = cor("2A2F3D");
+    public static final Color BORDA = cor("343A4A");
+    public static final Color BORDA_FORTE = cor("454D62");
+    public static final Color SOMBRA = new Color(0f, 0f, 0f, 0f);
 
     // Texto -------------------------------------------------------------------
-    public static final Color TEXTO = cor("E9EDF6");
-    public static final Color TEXTO_SUAVE = cor("98A2B9");
-    public static final Color TEXTO_FRACO = cor("5F6C87");
+    public static final Color TEXTO = cor("E2E4E9");
+    public static final Color TEXTO_SUAVE = cor("9DA4B4");
+    public static final Color TEXTO_FRACO = cor("687082");
 
     // Elementos do mundo ------------------------------------------------------
-    public static final Color AGENTE = cor("5CC8F5");
-    public static final Color AGENTE_ESCURO = cor("1B5F82");
-    public static final Color AGENTE_BRILHO = cor("A9E6FF");
-    public static final Color OURO = cor("F3C55A");
-    public static final Color OURO_CLARO = cor("FFE7A8");
-    public static final Color OURO_ESCURO = cor("9A7226");
-    public static final Color WUMPUS = cor("A96BDE");
-    public static final Color WUMPUS_ESCURO = cor("5B2E86");
-    public static final Color POCO = cor("05070C");
-    public static final Color POCO_BORDA = cor("2E2438");
-    public static final Color INICIO = cor("5FD9A0");
+    public static final Color AGENTE = cor("4C8BF5");
+    public static final Color AGENTE_ESCURO = cor("2B4C8C");
+    public static final Color AGENTE_BRILHO = cor("7AA7F8");
+    public static final Color OURO = cor("D9A74A");
+    public static final Color OURO_CLARO = cor("E5C37E");
+    public static final Color OURO_ESCURO = cor("8C6826");
+    public static final Color WUMPUS = cor("8A5CB8");
+    public static final Color WUMPUS_ESCURO = cor("4D3369");
+    public static final Color POCO = cor("12141A");
+    public static final Color POCO_BORDA = cor("2C303D");
+    public static final Color INICIO = cor("3EA97D");
 
     // Percepções --------------------------------------------------------------
-    public static final Color BRISA = cor("6FD3F7");
-    public static final Color FEDOR = cor("9BE07A");
-    public static final Color BRILHO = cor("F3C55A");
+    public static final Color BRISA = cor("5FA8D3");
+    public static final Color FEDOR = cor("7EBC65");
+    public static final Color BRILHO = cor("D9A74A");
 
     // Estados -----------------------------------------------------------------
-    public static final Color PERIGO = cor("FF6B6B");
-    public static final Color SUCESSO = cor("5FD9A0");
-    public static final Color ALERTA = cor("FFB454");
-    public static final Color NEUTRO = cor("7C8AA5");
+    public static final Color PERIGO = cor("D9534F");
+    public static final Color SUCESSO = cor("3EA97D");
+    public static final Color ALERTA = cor("D99B4A");
+    public static final Color NEUTRO = cor("687082");
 
     // Casas do tabuleiro ------------------------------------------------------
-    public static final Color CASA_DESCONHECIDA = cor("0E1421");
-    public static final Color CASA_VISITADA = cor("1A2536");
-    public static final Color CASA_ATUAL = cor("223A52");
-    public static final Color CASA_INICIAL = cor("16302A");
-    public static final Color GRADE = cor("222D42");
+    public static final Color CASA_DESCONHECIDA = cor("16181F");
+    public static final Color CASA_VISITADA = cor("222630");
+    public static final Color CASA_ATUAL = cor("2B3344");
+    public static final Color CASA_INICIAL = cor("1F2E28");
+    public static final Color GRADE = cor("2E3342");
 
     /** Cor da linha do registro, de acordo com a natureza do acontecimento. */
     public static Color doEvento(TipoEvento tipo) {

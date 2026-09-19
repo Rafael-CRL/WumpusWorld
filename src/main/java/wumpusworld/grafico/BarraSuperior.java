@@ -17,8 +17,6 @@ public final class BarraSuperior {
 
     private Area area = new Area(0f, 0f, 1f, 1f);
     private Area pilulaDaSituacao = area;
-    private Area pilulaDaVelocidade = area;
-    private Area pilulaDaPausa = area;
 
     public BarraSuperior(Ativos ativos) {
         this.ativos = ativos;
@@ -29,10 +27,6 @@ public final class BarraSuperior {
         float y = novaArea.centroY() - ALTURA_DA_PILULA / 2f;
         float direita = novaArea.direita() - MARGEM;
 
-        pilulaDaPausa = new Area(direita - 104f, y, 104f, ALTURA_DA_PILULA);
-        direita -= 104f + 10f;
-        pilulaDaVelocidade = new Area(direita - 150f, y, 150f, ALTURA_DA_PILULA);
-        direita -= 150f + 10f;
         pilulaDaSituacao = new Area(direita - 230f, y, 230f, ALTURA_DA_PILULA);
     }
 
@@ -53,10 +47,6 @@ public final class BarraSuperior {
 
         Color corDaSituacao = corDaSituacao(partida);
         pilula(formas, pilulaDaSituacao, corDaSituacao);
-        pilula(formas, pilulaDaVelocidade, Paleta.NEUTRO);
-        pilula(formas, pilulaDaPausa,
-                animacao.pausada() && !partida.getSituacao().encerrada()
-                        ? Paleta.ALERTA : Paleta.NEUTRO);
 
         formas.setColor(corDaSituacao);
         formas.circle(pilulaDaSituacao.x() + 17f, pilulaDaSituacao.centroY(),
@@ -69,7 +59,7 @@ public final class BarraSuperior {
     }
 
     public void desenharTextos(SpriteBatch lote, Partida partida,
-            EstadoDaAnimacao animacao, float multiplicadorDeVelocidade) {
+            EstadoDaAnimacao animacao) {
 
         float textoX = area.x() + MARGEM + 54f;
         Desenho.texto(lote, ativos.fonteTitulo, "MUNDO DE WUMPUS",
@@ -85,20 +75,6 @@ public final class BarraSuperior {
                 tituloDaSituacao(partida),
                 pilulaDaSituacao.centroX() + 8f,
                 pilulaDaSituacao.centroY() + meiaLetra, corDaSituacao(partida));
-
-        Desenho.textoCentralizado(lote, ativos.fonteMiuda,
-                String.format("VELOCIDADE %.2f×", multiplicadorDeVelocidade),
-                pilulaDaVelocidade.centroX(),
-                pilulaDaVelocidade.centroY() + meiaLetra, Paleta.TEXTO_SUAVE);
-
-        boolean encerrada = partida.getSituacao().encerrada();
-        String estado = encerrada ? "ENCERRADO"
-                : (animacao.pausada() ? "PAUSADO" : "EM CURSO");
-        Desenho.textoCentralizado(lote, ativos.fonteMiuda, estado,
-                pilulaDaPausa.centroX(),
-                pilulaDaPausa.centroY() + ativos.fonteMiuda.getCapHeight() / 2f,
-                animacao.pausada() && !encerrada
-                        ? Paleta.ALERTA : Paleta.TEXTO_SUAVE);
     }
 
     private static Color corDaSituacao(Partida partida) {
@@ -119,3 +95,4 @@ public final class BarraSuperior {
                 : "EXPLORANDO";
     }
 }
+
