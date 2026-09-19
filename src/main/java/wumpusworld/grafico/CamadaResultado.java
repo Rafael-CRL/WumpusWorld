@@ -49,11 +49,7 @@ public final class CamadaResultado {
     }
 
     public void atualizar(float delta, boolean visivel) {
-        if (visivel) {
-            progresso = Math.min(1f, progresso + delta * 2.4f);
-        } else {
-            progresso = 0f;
-        }
+        progresso = visivel ? 1f : 0f;
     }
 
     public boolean estaVisivel() {
@@ -66,45 +62,24 @@ public final class CamadaResultado {
             return;
         }
 
-        float suave = Desenho.suavizar(progresso);
         Color cor = corDoResultado(partida.getSituacao());
+        Area alvo = cartao;
 
-        // Escurece o restante da tela sem apagá-lo por completo.
-        formas.setColor(0f, 0f, 0f, 0.30f * suave);
-        formas.rect(0f, 0f, larguraDaTela, alturaDaTela);
-
-        // O cartão cresce um pouco ao entrar.
-        float escala = 0.94f + 0.06f * suave;
-        Area alvo = escalar(cartao, escala);
-
-        Desenho.sombra(formas, alvo, 20f, 0.8f * suave);
-        Desenho.painel(formas, alvo, 20f,
-                Paleta.comAlfa(Paleta.PAINEL, suave),
-                Paleta.comAlfa(cor, 0.65f * suave), 2f);
-
-        // Faixa colorida no topo do cartão.
-        Desenho.caixa(formas, alvo.x() + 20f, alvo.topo() - 6f,
-                alvo.largura() - 40f, 4f, 2f, Paleta.comAlfa(cor, suave));
+        Desenho.painel(formas, alvo, 4f, Paleta.PAINEL, cor, 1f);
 
         // Emblema do desfecho.
         float emblemaX = alvo.x() + 78f;
         float emblemaY = alvo.topo() - 80f;
-        formas.setColor(Paleta.comAlfa(cor, 0.12f * suave));
-        formas.circle(emblemaX, emblemaY, 42f, 40);
-        Desenho.anel(formas, emblemaX, emblemaY, 40f, 42f,
-                Paleta.comAlfa(cor, 0.5f * suave), 48);
-
         switch (partida.getSituacao()) {
             case VITORIA -> Icones.ouro(formas, emblemaX, emblemaY, 118f, tempo);
             case MORTE -> Icones.caveira(formas, emblemaX, emblemaY, 150f);
             default -> relogio(formas, emblemaX, emblemaY, 30f,
-                    Paleta.comAlfa(cor, suave), tempo);
+                    cor, tempo);
         }
 
         // Área dos números.
         Desenho.caixa(formas, alvo.x() + 26f, alvo.y() + 56f,
-                alvo.largura() - 52f, 68f, 12f,
-                Paleta.comAlfa(Paleta.PAINEL_INTERNO, suave));
+                alvo.largura() - 52f, 68f, 4f, Paleta.PAINEL_INTERNO);
     }
 
     /** Relógio simples usado quando a partida acaba por limite de movimentos. */
@@ -125,18 +100,17 @@ public final class CamadaResultado {
             return;
         }
 
-        float suave = Desenho.suavizar(progresso);
         Situacao situacao = partida.getSituacao();
         AgenteInteligente agente = partida.getAgente();
-        Color cor = Paleta.comAlfa(corDoResultado(situacao), suave);
-        Area alvo = escalar(cartao, 0.94f + 0.06f * suave);
+        Color cor = corDoResultado(situacao);
+        Area alvo = cartao;
 
         float textoX = alvo.x() + 140f;
         Desenho.texto(lote, ativos.fonteBanner, situacao.getTitulo(),
                 textoX, alvo.topo() - 46f, cor);
         Desenho.texto(lote, ativos.fonteTexto, situacao.getDescricao(),
                 textoX, alvo.topo() - 104f,
-                Paleta.comAlfa(Paleta.TEXTO_SUAVE, suave));
+                Paleta.TEXTO_SUAVE);
 
         // Quatro números que resumem a partida.
         float larguraDaColuna = (alvo.largura() - 52f) / 4f;
@@ -146,29 +120,32 @@ public final class CamadaResultado {
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 0.5f,
                 baseDosRotulos, baseDosValores, "PONTUAÇÃO FINAL",
                 String.valueOf(agente.getPontuacao()),
-                Paleta.comAlfa(agente.getPontuacao() >= 0
-                        ? Paleta.SUCESSO : Paleta.PERIGO, suave), suave);
+                agente.getPontuacao() >= 0 ? Paleta.SUCESSO : Paleta.PERIGO, 1f);
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 1.5f,
                 baseDosRotulos, baseDosValores, "MOVIMENTOS",
                 String.valueOf(agente.getQuantidadeDeMovimentos()),
-                Paleta.comAlfa(Paleta.TEXTO, suave), suave);
+                Paleta.TEXTO, 1f);
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 2.5f,
                 baseDosRotulos, baseDosValores, "CASAS VISITADAS",
                 partida.getMundo().quantidadeDeCasasVisitadas() + "/"
                 + (Mundo.TAMANHO * Mundo.TAMANHO),
-                Paleta.comAlfa(Paleta.TEXTO, suave), suave);
+                Paleta.TEXTO, 1f);
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 3.5f,
                 baseDosRotulos, baseDosValores, "OURO",
                 agente.possuiOuro() ? "SIM" : "NÃO",
-                Paleta.comAlfa(agente.possuiOuro()
-                        ? Paleta.OURO : Paleta.TEXTO_FRACO, suave), suave);
+                agente.possuiOuro() ? Paleta.OURO : Paleta.TEXTO_FRACO, 1f);
+
+        Desenho.textoCentralizado(lote, ativos.fonteMiuda,
+                "R sorteia um novo mapa   ·   ESC encerra",
+                alvo.centroX(), alvo.y() + 36f,
+                Paleta.TEXTO_FRACO);
     }
 
     private void escreverResumo(SpriteBatch lote, float centroX,
             float baseDoRotulo, float baseDoValor, String rotulo, String valor,
             Color corDoValor, float suave) {
         Desenho.textoCentralizado(lote, ativos.fonteMiuda, rotulo,
-                centroX, baseDoRotulo, Paleta.comAlfa(Paleta.TEXTO_FRACO, suave));
+                centroX, baseDoRotulo, Paleta.TEXTO_FRACO);
         Desenho.textoCentralizado(lote, ativos.fonteValor, valor,
                 centroX, baseDoValor, corDoValor);
     }

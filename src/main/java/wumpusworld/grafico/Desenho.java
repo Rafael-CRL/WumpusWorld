@@ -27,12 +27,17 @@ public final class Desenho {
     // -----------------------------------------------------------------------
 
     /**
-     * Retângulo de cantos levemente arredondados (máximo 4px), preenchido.
+     * Retângulo de cantos arredondados, preenchido.
+     *
+     * <p>Os três retângulos e os quatro quartos de círculo são recortados de
+     * modo a <strong>não se sobrepor</strong>. Isso é essencial: com cores
+     * translúcidas, qualquer sobreposição seria misturada duas vezes e
+     * apareceria como manchas escuras nos cantos.</p>
      */
     public static void caixa(ShapeRenderer formas, float x, float y,
             float largura, float altura, float raio, Color cor) {
         formas.setColor(cor);
-        float r = Math.min(Math.min(raio, 4f), Math.min(largura, altura) / 2f);
+        float r = Math.min(4f, Math.min(raio, Math.min(largura, altura) / 2f));
 
         if (r <= 0.5f) {
             formas.rect(x, y, largura, altura);
@@ -50,14 +55,15 @@ public final class Desenho {
     }
 
     /**
-     * Apenas a moldura de um retângulo com borda fina (1px por padrão).
+     * Apenas a moldura de um retângulo arredondado, com espessura constante.
+     * Como não há preenchimento no miolo, funciona bem com cores translúcidas.
      */
     public static void contorno(ShapeRenderer formas, float x, float y,
             float largura, float altura, float raio, float espessura,
             Color cor) {
         formas.setColor(cor);
-        float r = Math.min(Math.min(raio, 4f), Math.min(largura, altura) / 2f);
-        float e = Math.min(espessura, r);
+        float r = Math.min(4f, Math.min(raio, Math.min(largura, altura) / 2f));
+        float e = Math.min(1f, Math.min(espessura, r));
 
         formas.rect(x + r, y, largura - r * 2f, e);
         formas.rect(x + r, y + altura - e, largura - r * 2f, e);
@@ -110,25 +116,14 @@ public final class Desenho {
     }
 
     /**
-     * Painel completo: preenchimento e borda fina de 1px.
+     * Painel completo: primeiro o preenchimento, depois a moldura por cima.
+     * Nessa ordem a borda nunca é misturada com o fundo, o que preserva o
+     * contraste mesmo quando as duas cores são translúcidas.
      */
     public static void painel(ShapeRenderer formas, Area area, float raio,
             Color corDoFundo, Color corDaBorda, float espessura) {
         caixa(formas, area, raio, corDoFundo);
-        contorno(formas, area, raio, 1.0f, corDaBorda);
-    }
-
-    /** Sombra difusa removida conforme os novos critérios visuais. */
-    public static void sombra(ShapeRenderer formas, Area area, float raio,
-            float intensidade) {
-        // Nenhuma sombra difusa.
-    }
-
-    /** Retângulo com degradê vertical entre duas cores. */
-    public static void degradeVertical(ShapeRenderer formas, float x, float y,
-            float largura, float altura, Color corDeBaixo, Color corDeCima) {
-        formas.rect(x, y, largura, altura,
-                corDeBaixo, corDeBaixo, corDeCima, corDeCima);
+        contorno(formas, area, raio, espessura, corDaBorda);
     }
 
     /** Anel preenchido entre dois raios. */

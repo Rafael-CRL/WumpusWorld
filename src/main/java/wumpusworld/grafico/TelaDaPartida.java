@@ -3,23 +3,19 @@ package wumpusworld.grafico;
 import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.ScreenAdapter;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
-import wumpusworld.nucleo.AgenteInteligente;
-import wumpusworld.nucleo.DisparoDeFlecha;
-import wumpusworld.nucleo.EventoJogo;
 import wumpusworld.nucleo.Partida;
-import wumpusworld.nucleo.Posicao;
 import wumpusworld.nucleo.Situacao;
-import wumpusworld.nucleo.TipoEvento;
 
 /**
  * Tela principal: monta o layout, controla o relógio da simulação e desenha.
@@ -49,7 +45,7 @@ public final class TelaDaPartida extends ScreenAdapter {
     private static final float ALTURA_DA_BARRA = 78f;
     private static final float LARGURA_DO_TABULEIRO = 660f;
 
-    /** Intervalo fixo entre dois passos do agente, em segundos. */
+    /** Intervalo padrão entre dois passos do agente, em segundos. */
     private static final float INTERVALO_BASE = 0.62f;
 
     private final Ativos ativos;
@@ -63,7 +59,6 @@ public final class TelaDaPartida extends ScreenAdapter {
     private final PainelRegistro painelRegistro;
     private final BarraSuperior barraSuperior;
     private final CamadaResultado camadaResultado;
-    private final Efeitos efeitos = new Efeitos();
 
     private final Random sorteador = new Random();
     private Partida partida = new Partida();
@@ -71,13 +66,7 @@ public final class TelaDaPartida extends ScreenAdapter {
     private float tempo;
     private float relogioDoPasso;
     private float tempoDesdeOPasso = 999f;
-
-    /** Partículas de poeira que dão profundidade ao fundo. */
-    private final float[] poeiraX = new float[46];
-    private final float[] poeiraY = new float[46];
-    private final float[] poeiraRaio = new float[46];
-    private final float[] poeiraVelocidade = new float[46];
-    private final float[] poeiraAlfa = new float[46];
+    private EstadoDoJogo estado = EstadoDoJogo.PARADO;
 
     public TelaDaPartida(Ativos ativos, SpriteBatch lote, ShapeRenderer formas) {
         this.ativos = ativos;
@@ -98,7 +87,7 @@ public final class TelaDaPartida extends ScreenAdapter {
                 GL20.GL_ONE, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         prepararLayout();
-        prepararPoeira();
+        Gdx.input.setInputProcessor(criarControles());
     }
 
     // -----------------------------------------------------------------------
@@ -106,7 +95,7 @@ public final class TelaDaPartida extends ScreenAdapter {
     // -----------------------------------------------------------------------
 
     /**
-     * Divide a resolução virtual entre os blocos da interface:
+     * Divide a resolução virtual entre os cinco blocos da interface:
      * cabeçalho, tabuleiro, informações e registro.
      */
     private void prepararLayout() {
@@ -114,7 +103,6 @@ public final class TelaDaPartida extends ScreenAdapter {
 
         Area barra = new Area(MARGEM, ALTURA_VIRTUAL - MARGEM - ALTURA_DA_BARRA,
                 larguraUtil, ALTURA_DA_BARRA);
-
         float baseDoMeio = MARGEM;
         float alturaDoMeio = barra.y() - ESPACO - baseDoMeio;
 
@@ -123,7 +111,7 @@ public final class TelaDaPartida extends ScreenAdapter {
 
         float xDaLateral = tabuleiro.direita() + ESPACO;
         float larguraDaLateral = LARGURA_VIRTUAL - MARGEM - xDaLateral;
-        float alturaDoStatus = 340f;
+        float alturaDoStatus = 310f;
 
         Area status = new Area(xDaLateral,
                 baseDoMeio + alturaDoMeio - alturaDoStatus,
@@ -143,14 +131,52 @@ public final class TelaDaPartida extends ScreenAdapter {
         camadaResultado.definirArea(cartao, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
     }
 
-    private void prepararPoeira() {
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
-            poeiraY[indice] = MathUtils.random(0f, ALTURA_VIRTUAL);
-            poeiraRaio[indice] = MathUtils.random(0.8f, 2.4f);
-            poeiraVelocidade[indice] = MathUtils.random(3f, 14f);
-            poeiraAlfa[indice] = MathUtils.random(0.05f, 0.18f);
+    // -----------------------------------------------------------------------
+    //  Controles por clique
+    // -----------------------------------------------------------------------
+
+    private InputAdapter criarControles() {
+        return new InputAdapter() {
+            @Override
+            public boolean touchDown(int x, int y, int ponteiro, int botao) {
+                Vector2 ponto = viewport.unproject(new Vector2(x, y));
+                switch (barraSuperior.acaoNoPonto(ponto.x, ponto.y, estado)) {
+                    case JOGAR -> estado = EstadoDoJogo.JOGANDO;
+                    case PAUSAR -> alternarPausa();
+                    case REINICIAR -> reiniciar();
+                    case NENHUMA -> {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public boolean mouseMoved(int x, int y) {
+                Vector2 ponto = viewport.unproject(new Vector2(x, y));
+                barraSuperior.atualizarHover(ponto.x, ponto.y, estado);
+                return false;
+            }
+        };
+    }
+
+    private void alternarPausa() {
+        if (estado == EstadoDoJogo.JOGANDO) {
+            estado = EstadoDoJogo.PAUSADO;
+        } else if (estado == EstadoDoJogo.PAUSADO) {
+            estado = EstadoDoJogo.JOGANDO;
         }
+    }
+
+    /** Sorteia uma nova fase e aguarda o início pelo botão Jogar. */
+    private void reiniciar() {
+        partida = Partida.comFaseSorteada(sorteador);
+
+        relogioDoPasso = 0f;
+        tempoDesdeOPasso = 999f;
+        estado = EstadoDoJogo.PARADO;
+        camadaResultado.reiniciar();
+        prepararLayout();
     }
 
     // -----------------------------------------------------------------------
@@ -167,13 +193,10 @@ public final class TelaDaPartida extends ScreenAdapter {
     private void atualizar(float delta) {
         tempo += delta;
         tempoDesdeOPasso += delta;
-        efeitos.atualizar(delta);
-        atualizarPoeira(delta);
 
-        boolean encerrada = partida.getSituacao().encerrada();
-        camadaResultado.atualizar(delta, encerrada);
+        camadaResultado.atualizar(delta, estado == EstadoDoJogo.FIM);
 
-        if (!encerrada) {
+        if (estado == EstadoDoJogo.JOGANDO) {
             relogioDoPasso += delta;
             if (relogioDoPasso >= INTERVALO_BASE) {
                 relogioDoPasso = 0f;
@@ -182,16 +205,6 @@ public final class TelaDaPartida extends ScreenAdapter {
         }
 
         painelRegistro.atualizar(partida.getRegistro());
-    }
-
-    private void atualizarPoeira(float delta) {
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            poeiraY[indice] += poeiraVelocidade[indice] * delta;
-            if (poeiraY[indice] > ALTURA_VIRTUAL) {
-                poeiraY[indice] = -4f;
-                poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
-            }
-        }
     }
 
     private float duracaoDoDisparo() {
@@ -208,53 +221,8 @@ public final class TelaDaPartida extends ScreenAdapter {
             return;
         }
         tempoDesdeOPasso = 0f;
-        reagirAoPasso();
-    }
-
-    /** Traduz os acontecimentos do passo em efeitos visuais. */
-    private void reagirAoPasso() {
-        Posicao destino = partida.getDestinoDoPasso();
-        float centroX = painelTabuleiro.centroX(destino.coluna());
-        float centroY = painelTabuleiro.centroY(destino.linha());
-        float lado = painelTabuleiro.getLado();
-
-        for (EventoJogo evento : partida.getEventosDoUltimoPasso()) {
-            if (evento.tipo() == TipoEvento.TESOURO) {
-                efeitos.clarao(Paleta.OURO, 0.22f);
-                efeitos.onda(centroX, centroY, lado * 1.5f, Paleta.OURO, 0.9f);
-                efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_OURO,
-                        centroX, centroY + lado * 0.4f, Paleta.OURO);
-            }
-        }
-
-        DisparoDeFlecha disparo = partida.getUltimoDisparo();
-        if (disparo != null && disparo.acertou()) {
-            float alvoX = painelTabuleiro.centroX(disparo.destino().coluna());
-            float alvoY = painelTabuleiro.centroY(disparo.destino().linha());
-            efeitos.tremer(4.5f);
-            efeitos.onda(alvoX, alvoY, lado * 1.3f, Paleta.ALERTA, 0.7f);
-            efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_WUMPUS,
-                    alvoX, alvoY + lado * 0.4f, Paleta.ALERTA);
-        }
-
-        switch (partida.getSituacao()) {
-            case MORTE -> {
-                efeitos.tremer(11f);
-                efeitos.clarao(Paleta.PERIGO, 0.45f);
-                efeitos.onda(centroX, centroY, lado * 2.0f, Paleta.PERIGO, 1.1f);
-                efeitos.textoFlutuante(
-                        String.valueOf(AgenteInteligente.PENALIDADE_MORTE),
-                        centroX, centroY + lado * 0.4f, Paleta.PERIGO);
-            }
-            case VITORIA -> {
-                efeitos.clarao(Paleta.SUCESSO, 0.32f);
-                efeitos.onda(centroX, centroY, lado * 2.2f, Paleta.SUCESSO, 1.2f);
-                efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_VITORIA,
-                        centroX, centroY + lado * 0.4f, Paleta.SUCESSO);
-            }
-            default -> {
-                // Passo comum: nenhum efeito especial.
-            }
+        if (partida.getSituacao().encerrada()) {
+            estado = EstadoDoJogo.FIM;
         }
     }
 
@@ -271,18 +239,17 @@ public final class TelaDaPartida extends ScreenAdapter {
 
         viewport.apply();
 
-        // Passagem 1: todas as formas, com o tremor aplicado à câmera.
+        // Passagem 1: formas da interface.
         habilitarMistura();
-        posicionarCamera(efeitos.getDeslocamentoX(), efeitos.getDeslocamentoY());
+        posicionarCamera(0f, 0f);
         formas.setProjectionMatrix(camera.combined);
         formas.begin(ShapeRenderer.ShapeType.Filled);
 
         desenharFundo();
-        barraSuperior.desenharFormas(formas, partida, animacao);
+        barraSuperior.desenharFormas(formas, estado);
         painelTabuleiro.desenharFormas(formas, partida, animacao);
         painelStatus.desenharFormas(formas, partida, animacao);
         painelRegistro.desenharFormas(formas);
-        efeitos.desenharOndas(formas);
 
         formas.end();
 
@@ -290,20 +257,18 @@ public final class TelaDaPartida extends ScreenAdapter {
         lote.setProjectionMatrix(camera.combined);
         lote.begin();
 
-        barraSuperior.desenharTextos(lote, partida, animacao);
+        barraSuperior.desenharTextos(lote, estado);
         painelTabuleiro.desenharTextos(lote, partida, animacao);
         painelStatus.desenharTextos(lote, partida);
         painelRegistro.desenharTextos(lote, partida.getRegistro().size());
-        efeitos.desenharTextos(lote, ativos.fonteValor);
 
         lote.end();
 
-        // Passagem 3: clarão e cartão de encerramento, já sem tremor.
+        // Passagem 3: cartão de encerramento.
         habilitarMistura();
         posicionarCamera(0f, 0f);
         formas.setProjectionMatrix(camera.combined);
         formas.begin(ShapeRenderer.ShapeType.Filled);
-        efeitos.desenharClarao(formas, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
         camadaResultado.desenharFormas(formas, partida, tempo);
         formas.end();
 
@@ -324,11 +289,20 @@ public final class TelaDaPartida extends ScreenAdapter {
                 0f, 1f);
 
         return new EstadoDaAnimacao(tempo, progressoDoPasso, progressoDoDisparo,
-                true, false);
+                true);
     }
 
+    /**
+     * Liga a mistura de transparência com a função padrão de composição.
+     *
+     * <p>É preciso repetir isso antes de cada passagem do {@link ShapeRenderer}:
+     * o {@code SpriteBatch} desliga o {@code GL_BLEND} ao terminar, e sem ele
+     * todas as cores translúcidas seriam escritas como se fossem opacas.</p>
+     */
     private void habilitarMistura() {
         Gdx.gl.glEnable(GL20.GL_BLEND);
+        // Cor: composição normal. Alfa: a função separada mantém o quadro
+        // opaco, o que evita véus translúcidos "furarem" a imagem final.
         Gdx.gl.glBlendFuncSeparate(
                 GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
                 GL20.GL_ONE, GL20.GL_ONE_MINUS_SRC_ALPHA);
@@ -340,28 +314,10 @@ public final class TelaDaPartida extends ScreenAdapter {
         camera.update();
     }
 
+    /** Fundo plano da interface. */
     private void desenharFundo() {
-        Desenho.degradeVertical(formas, 0f, 0f, LARGURA_VIRTUAL, ALTURA_VIRTUAL,
-                Paleta.FUNDO_BAIXO, Paleta.FUNDO_ALTO);
-
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            formas.setColor(Paleta.comAlfa(Paleta.AGENTE_BRILHO,
-                    poeiraAlfa[indice]));
-            formas.circle(poeiraX[indice], poeiraY[indice],
-                    poeiraRaio[indice], 10);
-        }
-
-        Color opaco = new Color(0f, 0f, 0f, 0.55f);
-        Color transparente = new Color(0f, 0f, 0f, 0f);
-        float faixa = 130f;
-        formas.rect(0f, 0f, LARGURA_VIRTUAL, faixa,
-                opaco, opaco, transparente, transparente);
-        formas.rect(0f, ALTURA_VIRTUAL - faixa, LARGURA_VIRTUAL, faixa,
-                transparente, transparente, opaco, opaco);
-        formas.rect(0f, 0f, faixa, ALTURA_VIRTUAL,
-                opaco, transparente, transparente, opaco);
-        formas.rect(LARGURA_VIRTUAL - faixa, 0f, faixa, ALTURA_VIRTUAL,
-                transparente, opaco, opaco, transparente);
+        formas.setColor(Paleta.FUNDO_BAIXO);
+        formas.rect(0f, 0f, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
     }
 
     @Override
@@ -374,8 +330,8 @@ public final class TelaDaPartida extends ScreenAdapter {
         Gdx.input.setInputProcessor(null);
     }
 
+    /** Situação atual, exposta para testes e para a barra de título da janela. */
     public Situacao getSituacao() {
         return partida.getSituacao();
     }
 }
-

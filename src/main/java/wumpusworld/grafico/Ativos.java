@@ -37,36 +37,33 @@ public final class Ativos implements Disposable {
     public final BitmapFont fonteBanner;
 
     public Ativos() {
-        FreeTypeFontGenerator geradorRegular = new FreeTypeFontGenerator(
+        FreeTypeFontGenerator gerador = new FreeTypeFontGenerator(
                 Gdx.files.internal("fontes/DejaVuSans.ttf"));
-        FreeTypeFontGenerator geradorNegrito = new FreeTypeFontGenerator(
-                Gdx.files.internal("fontes/DejaVuSans-Bold.ttf"));
 
         try {
-            fonteTitulo = gerar(geradorNegrito, 30, 0f, null);
-            fonteBanner = gerar(geradorNegrito, 46, 0f, null);
-            fonteValor = gerar(geradorNegrito, 21, 0f, null);
-            fonteSecao = gerar(geradorNegrito, 14, 1.4f, null);
-            fonteTextoForte = gerar(geradorNegrito, 15, 0f, null);
-            fonteSubtitulo = gerar(geradorRegular, 14, 0.4f, null);
-            fonteTexto = gerar(geradorRegular, 15, 0f, null);
-            fontePequena = gerar(geradorRegular, 13, 0f, null);
-            fonteMiuda = gerar(geradorNegrito, 11, 0.8f, null);
+            fonteTitulo = gerar(gerador, 28, null);
+            fonteBanner = gerar(gerador, 28, null);
+            fonteValor = gerar(gerador, 20, null);
+            fonteSecao = gerar(gerador, 15, null);
+            fonteTextoForte = gerar(gerador, 15, null);
+            fonteSubtitulo = gerar(gerador, 15, null);
+            fonteTexto = gerar(gerador, 15, null);
+            fontePequena = gerar(gerador, 15, null);
+            fonteMiuda = gerar(gerador, 15, null);
         } finally {
-            geradorRegular.dispose();
-            geradorNegrito.dispose();
+            gerador.dispose();
         }
     }
 
     private static BitmapFont gerar(FreeTypeFontGenerator gerador, int tamanho,
-            float espacamento, Color cor) {
+            Color cor) {
         FreeTypeFontParameter parametro = new FreeTypeFontParameter();
         parametro.size = tamanho;
         parametro.characters = CARACTERES;
         parametro.hinting = FreeTypeFontGenerator.Hinting.Full;
         parametro.minFilter = Texture.TextureFilter.Linear;
         parametro.magFilter = Texture.TextureFilter.Linear;
-        parametro.spaceX = Math.round(espacamento);
+        parametro.spaceX = 0;
         parametro.genMipMaps = false;
 
         BitmapFont fonte = gerador.generateFont(parametro);
