@@ -1,0 +1,29 @@
+No ramo refactor/code-refinement
+Your branch is up to date with 'origin/refactor/code-refinement'.
+
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Mudanças a serem submetidas:
+	modified:   src/main/java/wumpusworld/grafico/Ativos.java
+	deleted:    src/main/java/wumpusworld/grafico/Efeitos.java
+	modified:   src/main/java/wumpusworld/grafico/EstadoDaAnimacao.java
+	new file:   src/main/java/wumpusworld/grafico/EstadoDoJogo.java
+	modified:   src/main/java/wumpusworld/grafico/Icones.java
+	modified:   src/main/java/wumpusworld/grafico/PainelStatus.java
+	modified:   src/main/java/wumpusworld/grafico/PainelTabuleiro.java
+
+Caminhos não mesclados:
+  (usar "git add <arquivo>..." para marcar resolução)
+	ambos modificados:   src/main/java/wumpusworld/grafico/BarraSuperior.java
+	ambos modificados:   src/main/java/wumpusworld/grafico/CamadaResultado.java
+	ambos modificados:   src/main/java/wumpusworld/grafico/Desenho.java
+	ambos modificados:   src/main/java/wumpusworld/grafico/PainelRegistro.java
+	ambos modificados:   src/main/java/wumpusworld/grafico/Paleta.java
+	ambos modificados:   src/main/java/wumpusworld/grafico/TelaDaPartida.java
+
+Arquivos não monitorados:
+  (utilize "git add <arquivo>..." para incluir o que será submetido)
+	handoff/
+

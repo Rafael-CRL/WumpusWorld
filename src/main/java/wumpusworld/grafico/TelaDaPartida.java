@@ -111,7 +111,7 @@ public final class TelaDaPartida extends ScreenAdapter {
 
         float xDaLateral = tabuleiro.direita() + ESPACO;
         float larguraDaLateral = LARGURA_VIRTUAL - MARGEM - xDaLateral;
-        float alturaDoStatus = 310f;
+        float alturaDoStatus = 330f;
 
         Area status = new Area(xDaLateral,
                 baseDoMeio + alturaDoMeio - alturaDoStatus,
@@ -128,7 +128,7 @@ public final class TelaDaPartida extends ScreenAdapter {
         Area cartao = new Area(xDaLateral + 8f,
                 baseDoMeio + (alturaDoMeio - alturaDoCartao) / 2f,
                 larguraDaLateral - 16f, alturaDoCartao);
-        camadaResultado.definirArea(cartao, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
+        camadaResultado.definirArea(cartao);
     }
 
     // -----------------------------------------------------------------------
@@ -140,10 +140,11 @@ public final class TelaDaPartida extends ScreenAdapter {
             @Override
             public boolean touchDown(int x, int y, int ponteiro, int botao) {
                 Vector2 ponto = viewport.unproject(new Vector2(x, y));
-                switch (barraSuperior.acaoNoPonto(ponto.x, ponto.y, estado)) {
+                switch (painelStatus.acaoNoPonto(ponto.x, ponto.y, estado)) {
                     case JOGAR -> estado = EstadoDoJogo.JOGANDO;
                     case PAUSAR -> alternarPausa();
                     case REINICIAR -> reiniciar();
+                    case ENCERRAR -> Gdx.app.exit();
                     case NENHUMA -> {
                         return false;
                     }
@@ -154,7 +155,7 @@ public final class TelaDaPartida extends ScreenAdapter {
             @Override
             public boolean mouseMoved(int x, int y) {
                 Vector2 ponto = viewport.unproject(new Vector2(x, y));
-                barraSuperior.atualizarHover(ponto.x, ponto.y, estado);
+                painelStatus.atualizarHover(ponto.x, ponto.y, estado);
                 return false;
             }
         };
@@ -246,9 +247,9 @@ public final class TelaDaPartida extends ScreenAdapter {
         formas.begin(ShapeRenderer.ShapeType.Filled);
 
         desenharFundo();
-        barraSuperior.desenharFormas(formas, estado);
+        barraSuperior.desenharFormas(formas);
         painelTabuleiro.desenharFormas(formas, partida, animacao);
-        painelStatus.desenharFormas(formas, partida, animacao);
+        painelStatus.desenharFormas(formas, partida, estado);
         painelRegistro.desenharFormas(formas);
 
         formas.end();
@@ -257,9 +258,9 @@ public final class TelaDaPartida extends ScreenAdapter {
         lote.setProjectionMatrix(camera.combined);
         lote.begin();
 
-        barraSuperior.desenharTextos(lote, estado);
+        barraSuperior.desenharTextos(lote);
         painelTabuleiro.desenharTextos(lote, partida, animacao);
-        painelStatus.desenharTextos(lote, partida);
+        painelStatus.desenharTextos(lote, partida, estado);
         painelRegistro.desenharTextos(lote, partida.getRegistro().size());
 
         lote.end();

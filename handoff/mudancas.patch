@@ -1,0 +1,241 @@
+diff --cc src/main/java/wumpusworld/grafico/BarraSuperior.java
+index e66cf8a,3e9a21d..0000000
+--- a/src/main/java/wumpusworld/grafico/BarraSuperior.java
++++ b/src/main/java/wumpusworld/grafico/BarraSuperior.java
+diff --cc src/main/java/wumpusworld/grafico/CamadaResultado.java
+index 0545b20,098112f..0000000
+--- a/src/main/java/wumpusworld/grafico/CamadaResultado.java
++++ b/src/main/java/wumpusworld/grafico/CamadaResultado.java
+diff --cc src/main/java/wumpusworld/grafico/Desenho.java
+index e50d96d,16a7e36..0000000
+--- a/src/main/java/wumpusworld/grafico/Desenho.java
++++ b/src/main/java/wumpusworld/grafico/Desenho.java
+diff --cc src/main/java/wumpusworld/grafico/PainelRegistro.java
+index 35c1492,ae42c06..0000000
+--- a/src/main/java/wumpusworld/grafico/PainelRegistro.java
++++ b/src/main/java/wumpusworld/grafico/PainelRegistro.java
+diff --cc src/main/java/wumpusworld/grafico/Paleta.java
+index 2bebcc9,443ad72..0000000
+--- a/src/main/java/wumpusworld/grafico/Paleta.java
++++ b/src/main/java/wumpusworld/grafico/Paleta.java
+diff --cc src/main/java/wumpusworld/grafico/TelaDaPartida.java
+index 8bd7908,c2eab26..0000000
+--- a/src/main/java/wumpusworld/grafico/TelaDaPartida.java
++++ b/src/main/java/wumpusworld/grafico/TelaDaPartida.java
+@@@ -3,8 -3,9 +3,8 @@@ package wumpusworld.grafico
+  import java.util.Random;
+  
+  import com.badlogic.gdx.Gdx;
+ -import com.badlogic.gdx.Input;
++ import com.badlogic.gdx.InputAdapter;
+  import com.badlogic.gdx.ScreenAdapter;
+- import com.badlogic.gdx.graphics.Color;
+  import com.badlogic.gdx.graphics.GL20;
+  import com.badlogic.gdx.graphics.OrthographicCamera;
+  import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+@@@ -47,11 -44,16 +43,11 @@@ public final class TelaDaPartida extend
+      private static final float MARGEM = 24f;
+      private static final float ESPACO = 16f;
+      private static final float ALTURA_DA_BARRA = 78f;
+ -    private static final float ALTURA_DO_RODAPE = 100f;
+      private static final float LARGURA_DO_TABULEIRO = 660f;
+  
+-     /** Intervalo fixo entre dois passos do agente, em segundos. */
++     /** Intervalo padrão entre dois passos do agente, em segundos. */
+      private static final float INTERVALO_BASE = 0.62f;
+  
+ -    private static final float[] VELOCIDADES =
+ -        {0.25f, 0.5f, 1f, 1.5f, 2f, 3f, 4f};
+ -    private static final int VELOCIDADE_PADRAO = 2;
+ -
+      private final Ativos ativos;
+      private final SpriteBatch lote;
+      private final ShapeRenderer formas;
+@@@ -61,9 -63,9 +57,8 @@@
+      private final PainelTabuleiro painelTabuleiro;
+      private final PainelStatus painelStatus;
+      private final PainelRegistro painelRegistro;
+ -    private final PainelRodape painelRodape;
+      private final BarraSuperior barraSuperior;
+      private final CamadaResultado camadaResultado;
+-     private final Efeitos efeitos = new Efeitos();
+  
+      private final Random sorteador = new Random();
+      private Partida partida = new Partida();
+@@@ -71,13 -73,9 +66,7 @@@
+      private float tempo;
+      private float relogioDoPasso;
+      private float tempoDesdeOPasso = 999f;
+- 
+-     /** Partículas de poeira que dão profundidade ao fundo. */
+-     private final float[] poeiraX = new float[46];
+-     private final float[] poeiraY = new float[46];
+-     private final float[] poeiraRaio = new float[46];
+-     private final float[] poeiraVelocidade = new float[46];
+-     private final float[] poeiraAlfa = new float[46];
+ -    private int indiceDaVelocidade = VELOCIDADE_PADRAO;
++     private EstadoDoJogo estado = EstadoDoJogo.PARADO;
+ -    private boolean mostrarMapaDeRisco = true;
+  
+      public TelaDaPartida(Ativos ativos, SpriteBatch lote, ShapeRenderer formas) {
+          this.ativos = ativos;
+@@@ -106,16 -105,17 +95,15 @@@
+      // -----------------------------------------------------------------------
+  
+      /**
+-      * Divide a resolução virtual entre os blocos da interface:
++      * Divide a resolução virtual entre os cinco blocos da interface:
+ -     * cabeçalho, tabuleiro, informações, registro e rodapé.
+ +     * cabeçalho, tabuleiro, informações e registro.
+       */
+      private void prepararLayout() {
+          float larguraUtil = LARGURA_VIRTUAL - MARGEM * 2f;
+  
+          Area barra = new Area(MARGEM, ALTURA_VIRTUAL - MARGEM - ALTURA_DA_BARRA,
+                  larguraUtil, ALTURA_DA_BARRA);
+ -        Area rodape = new Area(MARGEM, MARGEM, larguraUtil, ALTURA_DO_RODAPE);
+--
+ -        float baseDoMeio = rodape.topo() + ESPACO;
+ +        float baseDoMeio = MARGEM;
+          float alturaDoMeio = barra.y() - ESPACO - baseDoMeio;
+  
+          Area tabuleiro = new Area(MARGEM, baseDoMeio,
+@@@ -143,13 -144,66 +131,40 @@@
+          camadaResultado.definirArea(cartao, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
+      }
+  
+-     private void prepararPoeira() {
+-         for (int indice = 0; indice < poeiraX.length; indice++) {
+-             poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
+-             poeiraY[indice] = MathUtils.random(0f, ALTURA_VIRTUAL);
+-             poeiraRaio[indice] = MathUtils.random(0.8f, 2.4f);
+-             poeiraVelocidade[indice] = MathUtils.random(3f, 14f);
+-             poeiraAlfa[indice] = MathUtils.random(0.05f, 0.18f);
++     // -----------------------------------------------------------------------
+ -    //  Controles de teclado (recurso extra; a simulação anda sozinha)
+++    //  Controles por clique
++     // -----------------------------------------------------------------------
++ 
++     private InputAdapter criarControles() {
++         return new InputAdapter() {
+ -            @Override
+ -            public boolean keyDown(int tecla) {
+ -                switch (tecla) {
+ -                    case Input.Keys.SPACE -> alternarPausa();
+ -                    case Input.Keys.ENTER, Input.Keys.NUMPAD_ENTER -> {
+ -                        if (estado == EstadoDoJogo.JOGANDO
+ -                                || estado == EstadoDoJogo.PAUSADO) {
+ -                            estado = EstadoDoJogo.PAUSADO;
+ -                            executarPasso();
+ -                        }
+ -                    }
+ -                    case Input.Keys.PLUS, Input.Keys.EQUALS,
+ -                            Input.Keys.NUMPAD_ADD -> indiceDaVelocidade =
+ -                            Math.min(VELOCIDADES.length - 1, indiceDaVelocidade + 1);
+ -                    case Input.Keys.MINUS, Input.Keys.NUMPAD_SUBTRACT ->
+ -                            indiceDaVelocidade = Math.max(0, indiceDaVelocidade - 1);
+ -                    case Input.Keys.R -> reiniciar();
+ -                    case Input.Keys.H -> mostrarMapaDeRisco = !mostrarMapaDeRisco;
+ -                    case Input.Keys.ESCAPE -> Gdx.app.exit();
+ -                    default -> {
+ -                        return false;
+ -                    }
+ -                }
+ -                return true;
+ -            }
+ -
++             @Override
++             public boolean touchDown(int x, int y, int ponteiro, int botao) {
++                 Vector2 ponto = viewport.unproject(new Vector2(x, y));
++                 switch (barraSuperior.acaoNoPonto(ponto.x, ponto.y, estado)) {
++                     case JOGAR -> estado = EstadoDoJogo.JOGANDO;
++                     case PAUSAR -> alternarPausa();
++                     case REINICIAR -> reiniciar();
++                     case NENHUMA -> {
++                         return false;
++                     }
++                 }
++                 return true;
++             }
++ 
++             @Override
++             public boolean mouseMoved(int x, int y) {
++                 Vector2 ponto = viewport.unproject(new Vector2(x, y));
++                 barraSuperior.atualizarHover(ponto.x, ponto.y, estado);
++                 return false;
++             }
++         };
++     }
++ 
++     private void alternarPausa() {
++         if (estado == EstadoDoJogo.JOGANDO) {
++             estado = EstadoDoJogo.PAUSADO;
++         } else if (estado == EstadoDoJogo.PAUSADO) {
++             estado = EstadoDoJogo.JOGANDO;
+          }
+      }
+  
+@@@ -184,19 -246,13 +207,9 @@@
+          painelRegistro.atualizar(partida.getRegistro());
+      }
+  
+-     private void atualizarPoeira(float delta) {
+-         for (int indice = 0; indice < poeiraX.length; indice++) {
+-             poeiraY[indice] += poeiraVelocidade[indice] * delta;
+-             if (poeiraY[indice] > ALTURA_VIRTUAL) {
+-                 poeiraY[indice] = -4f;
+-                 poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
+-             }
+-         }
+ -    private float intervaloAtual() {
+ -        return INTERVALO_BASE / VELOCIDADES[indiceDaVelocidade];
+--    }
+--
+      private float duracaoDoDisparo() {
+          return partida.getUltimoDisparo() == null
+ -                ? 0f : Math.min(0.40f, intervaloAtual() * 0.50f);
+ +                ? 0f : Math.min(0.40f, INTERVALO_BASE * 0.50f);
+      }
+  
+      private float duracaoDoMovimento() {
+@@@ -282,7 -293,7 +250,6 @@@
+          painelTabuleiro.desenharFormas(formas, partida, animacao);
+          painelStatus.desenharFormas(formas, partida, animacao);
+          painelRegistro.desenharFormas(formas);
+-         efeitos.desenharOndas(formas);
+ -        painelRodape.desenharFormas(formas, tempo);
+  
+          formas.end();
+  
+@@@ -294,7 -305,7 +261,6 @@@
+          painelTabuleiro.desenharTextos(lote, partida, animacao);
+          painelStatus.desenharTextos(lote, partida);
+          painelRegistro.desenharTextos(lote, partida.getRegistro().size());
+-         efeitos.desenharTextos(lote, ativos.fonteValor);
+ -        painelRodape.desenharTextos(lote);
+  
+          lote.end();
+  
+@@@ -324,11 -334,20 +289,20 @@@
+                  0f, 1f);
+  
+          return new EstadoDaAnimacao(tempo, progressoDoPasso, progressoDoDisparo,
+-                 true, false);
+ -                mostrarMapaDeRisco);
+++                true);
+      }
+  
++     /**
++      * Liga a mistura de transparência com a função padrão de composição.
++      *
++      * <p>É preciso repetir isso antes de cada passagem do {@link ShapeRenderer}:
++      * o {@code SpriteBatch} desliga o {@code GL_BLEND} ao terminar, e sem ele
++      * todas as cores translúcidas seriam escritas como se fossem opacas.</p>
++      */
+      private void habilitarMistura() {
+          Gdx.gl.glEnable(GL20.GL_BLEND);
++         // Cor: composição normal. Alfa: a função separada mantém o quadro
++         // opaco, o que evita véus translúcidos "furarem" a imagem final.
+          Gdx.gl.glBlendFuncSeparate(
+                  GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
+                  GL20.GL_ONE, GL20.GL_ONE_MINUS_SRC_ALPHA);

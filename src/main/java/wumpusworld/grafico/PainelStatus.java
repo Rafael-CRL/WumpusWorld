@@ -27,11 +27,21 @@ public final class PainelStatus {
     private Area area = new Area(0f, 0f, 1f, 1f);
     private Area blocoPontuacao = area;
     private Area blocoObjetivo = area;
+    private final Area[] botoes = new Area[4];
     private final Area[] azulejos = new Area[4];
     private final Area[] chipsDePercepcao = new Area[3];
     private final Area[] chipsDeInventario = new Area[2];
     private float baseDoTitulo;
     private float baseDoRotuloPercepcoes;
+    private Acao acaoEmHover = Acao.NENHUMA;
+
+    public enum Acao {
+        JOGAR,
+        PAUSAR,
+        REINICIAR,
+        ENCERRAR,
+        NENHUMA
+    }
 
     public PainelStatus(Ativos ativos) {
         this.ativos = ativos;
@@ -45,7 +55,18 @@ public final class PainelStatus {
         float cursor = novaArea.topo() - MARGEM;
 
         baseDoTitulo = cursor - 4f;
-        cursor -= 22f;
+        cursor -= 44f;
+
+        float larguraDosBotoes = 82f + 88f + 112f + 96f + 3f * 8f;
+        float botaoX = novaArea.centroX() - larguraDosBotoes / 2f;
+        float botaoY = cursor;
+        botoes[0] = new Area(botaoX, botaoY, 82f, 32f);
+        botaoX += 90f;
+        botoes[1] = new Area(botaoX, botaoY, 88f, 32f);
+        botaoX += 96f;
+        botoes[2] = new Area(botaoX, botaoY, 112f, 32f);
+        botaoX += 120f;
+        botoes[3] = new Area(botaoX, botaoY, 96f, 32f);
 
         cursor -= 8f;
         float alturaDoDestaque = 62f;
@@ -92,9 +113,10 @@ public final class PainelStatus {
     // -----------------------------------------------------------------------
 
     public void desenharFormas(ShapeRenderer formas, Partida partida,
-            EstadoDaAnimacao animacao) {
+            EstadoDoJogo estado) {
 
         Desenho.painel(formas, area, 4f, Paleta.PAINEL, Paleta.BORDA, 1f);
+        desenharBotoes(formas, estado);
 
         AgenteInteligente agente = partida.getAgente();
         Percepcoes percepcoes = partida.getPercepcoesAtuais();
@@ -139,6 +161,24 @@ public final class PainelStatus {
                 agente.possuiFlecha(), Paleta.ALERTA);
     }
 
+    private void desenharBotoes(ShapeRenderer formas, EstadoDoJogo estado) {
+        desenharBotao(formas, botoes[0], Paleta.AGENTE,
+                estado == EstadoDoJogo.PARADO, Acao.JOGAR);
+        desenharBotao(formas, botoes[1], Paleta.ALERTA,
+                estado == EstadoDoJogo.JOGANDO || estado == EstadoDoJogo.PAUSADO,
+                Acao.PAUSAR);
+        desenharBotao(formas, botoes[2], Paleta.NEUTRO, true, Acao.REINICIAR);
+        desenharBotao(formas, botoes[3], Paleta.PERIGO, true, Acao.ENCERRAR);
+    }
+
+    private void desenharBotao(ShapeRenderer formas, Area botao, Color cor,
+            boolean habilitado, Acao acao) {
+        Color fundo = habilitado && acao == acaoEmHover ? Paleta.BORDA
+                : habilitado ? Paleta.PAINEL_DESTAQUE : Paleta.PAINEL_INTERNO;
+        Desenho.painel(formas, botao, 4f, fundo,
+                habilitado ? cor : Paleta.BORDA, 1f);
+    }
+
     private void desenharChipDePercepcao(ShapeRenderer formas, Area chip,
             boolean ativo, Color cor) {
         if (ativo) {
@@ -165,7 +205,8 @@ public final class PainelStatus {
     //  Textos
     // -----------------------------------------------------------------------
 
-    public void desenharTextos(SpriteBatch lote, Partida partida) {
+    public void desenharTextos(SpriteBatch lote, Partida partida,
+            EstadoDoJogo estado) {
         AgenteInteligente agente = partida.getAgente();
         Percepcoes percepcoes = partida.getPercepcoesAtuais();
         Mundo mundo = partida.getMundo();
@@ -173,6 +214,7 @@ public final class PainelStatus {
 
         Desenho.texto(lote, ativos.fonteSecao, "INFORMAÇÕES DA PARTIDA",
                 area.x() + MARGEM + 2f, baseDoTitulo, Paleta.TEXTO_SUAVE);
+        desenharTextosDosBotoes(lote, estado);
 
         // Pontuação.
         Desenho.texto(lote, ativos.fonteMiuda, "PONTUAÇÃO",
@@ -224,6 +266,53 @@ public final class PainelStatus {
         escreverChip(lote, chipsDeInventario[1],
                 agente.possuiFlecha() ? "FLECHA: DISPONÍVEL" : "FLECHA: USADA",
                 agente.possuiFlecha(), Paleta.ALERTA);
+    }
+
+    private void desenharTextosDosBotoes(SpriteBatch lote, EstadoDoJogo estado) {
+        float meiaLetra = ativos.fonteMiuda.getCapHeight() / 2f;
+        escreverBotao(lote, botoes[0], "Jogar", estado == EstadoDoJogo.PARADO,
+                Paleta.AGENTE_BRILHO, meiaLetra);
+        boolean podePausar = estado == EstadoDoJogo.JOGANDO
+                || estado == EstadoDoJogo.PAUSADO;
+        escreverBotao(lote, botoes[1], estado == EstadoDoJogo.PAUSADO
+                ? "Continuar" : "Pausar", podePausar, Paleta.ALERTA, meiaLetra);
+        escreverBotao(lote, botoes[2], "Reiniciar", true,
+                Paleta.TEXTO_SUAVE, meiaLetra);
+        escreverBotao(lote, botoes[3], "Encerrar", true,
+                Paleta.PERIGO, meiaLetra);
+    }
+
+    private void escreverBotao(SpriteBatch lote, Area botao, String texto,
+            boolean habilitado, Color cor, float meiaLetra) {
+        Desenho.textoCentralizado(lote, ativos.fonteMiuda, texto,
+                botao.centroX(), botao.centroY() + meiaLetra,
+                habilitado ? cor : Paleta.TEXTO_FRACO);
+    }
+
+    public Acao acaoNoPonto(float x, float y, EstadoDoJogo estado) {
+        if (contem(botoes[0], x, y) && estado == EstadoDoJogo.PARADO) {
+            return Acao.JOGAR;
+        }
+        if (contem(botoes[1], x, y) && (estado == EstadoDoJogo.JOGANDO
+                || estado == EstadoDoJogo.PAUSADO)) {
+            return Acao.PAUSAR;
+        }
+        if (contem(botoes[2], x, y)) {
+            return Acao.REINICIAR;
+        }
+        if (contem(botoes[3], x, y)) {
+            return Acao.ENCERRAR;
+        }
+        return Acao.NENHUMA;
+    }
+
+    public void atualizarHover(float x, float y, EstadoDoJogo estado) {
+        acaoEmHover = acaoNoPonto(x, y, estado);
+    }
+
+    private static boolean contem(Area area, float x, float y) {
+        return x >= area.x() && x <= area.direita()
+                && y >= area.y() && y <= area.topo();
     }
 
     private void escreverAzulejo(SpriteBatch lote, Area azulejo, String rotulo,

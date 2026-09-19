@@ -22,8 +22,6 @@ public final class CamadaResultado {
 
     private final Ativos ativos;
 
-    private float larguraDaTela;
-    private float alturaDaTela;
     private Area cartao = new Area(0f, 0f, 660f, 300f);
     private float progresso;
 
@@ -34,13 +32,9 @@ public final class CamadaResultado {
     /**
      * @param alvo    onde o cartão deve aparecer; fica sobre a coluna lateral
      *                para que o mapa revelado continue inteiramente visível
-     * @param largura largura da tela virtual, usada pelo véu de escurecimento
-     * @param altura  altura da tela virtual
      */
-    public void definirArea(Area alvo, float largura, float altura) {
+    public void definirArea(Area alvo) {
         this.cartao = alvo;
-        this.larguraDaTela = largura;
-        this.alturaDaTela = altura;
     }
 
     /** Reinicia a animação de entrada do cartão. */
@@ -71,7 +65,7 @@ public final class CamadaResultado {
         float emblemaX = alvo.x() + 78f;
         float emblemaY = alvo.topo() - 80f;
         switch (partida.getSituacao()) {
-            case VITORIA -> Icones.ouro(formas, emblemaX, emblemaY, 118f, tempo);
+            case VITORIA -> Icones.trofeuComOuro(formas, emblemaX, emblemaY, 118f);
             case MORTE -> Icones.caveira(formas, emblemaX, emblemaY, 150f);
             default -> relogio(formas, emblemaX, emblemaY, 30f,
                     cor, tempo);
@@ -120,41 +114,30 @@ public final class CamadaResultado {
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 0.5f,
                 baseDosRotulos, baseDosValores, "PONTUAÇÃO FINAL",
                 String.valueOf(agente.getPontuacao()),
-                agente.getPontuacao() >= 0 ? Paleta.SUCESSO : Paleta.PERIGO, 1f);
+                agente.getPontuacao() >= 0 ? Paleta.SUCESSO : Paleta.PERIGO);
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 1.5f,
                 baseDosRotulos, baseDosValores, "MOVIMENTOS",
                 String.valueOf(agente.getQuantidadeDeMovimentos()),
-                Paleta.TEXTO, 1f);
+                Paleta.TEXTO);
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 2.5f,
                 baseDosRotulos, baseDosValores, "CASAS VISITADAS",
                 partida.getMundo().quantidadeDeCasasVisitadas() + "/"
                 + (Mundo.TAMANHO * Mundo.TAMANHO),
-                Paleta.TEXTO, 1f);
+                Paleta.TEXTO);
         escreverResumo(lote, alvo.x() + 26f + larguraDaColuna * 3.5f,
                 baseDosRotulos, baseDosValores, "OURO",
                 agente.possuiOuro() ? "SIM" : "NÃO",
-                agente.possuiOuro() ? Paleta.OURO : Paleta.TEXTO_FRACO, 1f);
+                agente.possuiOuro() ? Paleta.OURO : Paleta.TEXTO_FRACO);
 
-        Desenho.textoCentralizado(lote, ativos.fonteMiuda,
-                "R sorteia um novo mapa   ·   ESC encerra",
-                alvo.centroX(), alvo.y() + 36f,
-                Paleta.TEXTO_FRACO);
     }
 
     private void escreverResumo(SpriteBatch lote, float centroX,
             float baseDoRotulo, float baseDoValor, String rotulo, String valor,
-            Color corDoValor, float suave) {
+            Color corDoValor) {
         Desenho.textoCentralizado(lote, ativos.fonteMiuda, rotulo,
                 centroX, baseDoRotulo, Paleta.TEXTO_FRACO);
         Desenho.textoCentralizado(lote, ativos.fonteValor, valor,
                 centroX, baseDoValor, corDoValor);
-    }
-
-    private static Area escalar(Area base, float escala) {
-        float largura = base.largura() * escala;
-        float altura = base.altura() * escala;
-        return new Area(base.centroX() - largura / 2f,
-                base.centroY() - altura / 2f, largura, altura);
     }
 
     private static Color corDoResultado(Situacao situacao) {
