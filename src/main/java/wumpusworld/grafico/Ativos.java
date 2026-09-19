@@ -35,6 +35,11 @@ public final class Ativos implements Disposable {
     public final BitmapFont fontePequena;
     public final BitmapFont fonteMiuda;
     public final BitmapFont fonteBanner;
+    public final Texture agente;
+    public final Texture poco;
+    public final Texture wumpus;
+    public final Texture trofeu;
+    public final Texture tesouro;
 
     public Ativos() {
         FreeTypeFontGenerator gerador = new FreeTypeFontGenerator(
@@ -50,9 +55,20 @@ public final class Ativos implements Disposable {
             fonteTexto = gerar(gerador, 15, null);
             fontePequena = gerar(gerador, 15, null);
             fonteMiuda = gerar(gerador, 15, null);
+            agente = carregarTextura("sprites/agente.png");
+            poco = carregarTextura("sprites/poco.png");
+            wumpus = carregarTextura("sprites/wumpus.png");
+            trofeu = carregarTextura("sprites/trofeu.png");
+            tesouro = carregarTextura("sprites/tesouro.png");
         } finally {
             gerador.dispose();
         }
+    }
+
+    private static Texture carregarTextura(String caminho) {
+        Texture textura = new Texture(Gdx.files.internal(caminho));
+        textura.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        return textura;
     }
 
     private static BitmapFont gerar(FreeTypeFontGenerator gerador, int tamanho,
@@ -84,5 +100,11 @@ public final class Ativos implements Disposable {
         fonteValor.dispose();
         fontePequena.dispose();
         fonteMiuda.dispose();
-        fonteBanner.dispose();    }
+        fonteBanner.dispose();
+        agente.dispose();
+        poco.dispose();
+        wumpus.dispose();
+        trofeu.dispose();
+        tesouro.dispose();
+    }
 }

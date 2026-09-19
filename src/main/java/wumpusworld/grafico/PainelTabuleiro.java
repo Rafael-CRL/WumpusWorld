@@ -51,6 +51,7 @@ public final class PainelTabuleiro {
     private float lado = 1f;
     private float passo = 1f;
     private float grade = 1f;
+    private Posicao posicaoDoOuro;
 
     public PainelTabuleiro(Ativos ativos) {
         this.ativos = ativos;
@@ -127,11 +128,11 @@ public final class PainelTabuleiro {
         Mundo mundo = partida.getMundo();
         AgenteInteligente agente = partida.getAgente();
 
+        atualizarPosicaoVisualDoOuro(partida, agente);
         desenharCasas(formas, mundo, agente, partida, animacao, revelar);
+        desenharMarcaDoOuro(formas, agente);
         desenharCaminhoMemorizado(formas, agente, animacao);
-        desenharElementos(formas, mundo, agente, animacao, revelar);
         desenharFlecha(formas, partida, animacao);
-        desenharAgente(formas, partida, animacao);
     }
 
     private void desenharCasas(ShapeRenderer formas, Mundo mundo,
@@ -236,6 +237,34 @@ public final class PainelTabuleiro {
         }
     }
 
+    /** Marca a casa onde o tesouro foi recolhido, sem alterar o mundo. */
+    private void desenharMarcaDoOuro(ShapeRenderer formas,
+            AgenteInteligente agente) {
+        if (!agente.possuiOuro() || posicaoDoOuro == null) {
+            return;
+        }
+
+        float centroX = centroX(posicaoDoOuro.coluna());
+        float centroY = centroY(posicaoDoOuro.linha());
+        float raioInterno = lado * .285f;
+        float raioExterno = lado * .305f;
+
+        for (int trecho = 0; trecho < 12; trecho += 2) {
+            Desenho.arcoDeAnel(formas, centroX, centroY,
+                    raioInterno, raioExterno, trecho * 30f + 4f, 18f,
+                    Paleta.OURO);
+        }
+    }
+
+    private void atualizarPosicaoVisualDoOuro(Partida partida,
+            AgenteInteligente agente) {
+        if (!agente.possuiOuro()) {
+            posicaoDoOuro = null;
+        } else if (partida.ouroFoiColetadoNoUltimoPasso()) {
+            posicaoDoOuro = partida.getDestinoDoPasso();
+        }
+    }
+
     /** Rota segura que o agente memorizou para voltar ao ponto de partida. */
     private void desenharCaminhoMemorizado(ShapeRenderer formas,
             AgenteInteligente agente, EstadoDaAnimacao animacao) {
@@ -262,38 +291,6 @@ public final class PainelTabuleiro {
         }
     }
 
-    private void desenharElementos(ShapeRenderer formas, Mundo mundo,
-            AgenteInteligente agente, EstadoDaAnimacao animacao,
-            boolean revelar) {
-
-        Icones.saida(formas, centroX(0), centroY(0), lado,
-                agente.possuiOuro(), animacao.tempo());
-
-        for (int linha = 0; linha < Mundo.TAMANHO; linha++) {
-            for (int coluna = 0; coluna < Mundo.TAMANHO; coluna++) {
-                boolean conhecida = revelar || mundo.foiVisitada(linha, coluna);
-                if (!conhecida) {
-                    continue;
-                }
-
-                float cx = centroX(coluna);
-                float cy = centroY(linha);
-
-                switch (mundo.getElemento(linha, coluna)) {
-                    case Mundo.POCO -> Icones.poco(formas, cx, cy, lado,
-                            animacao.tempo());
-                    case Mundo.WUMPUS -> Icones.wumpus(formas, cx, cy, lado,
-                            animacao.tempo());
-                    case Mundo.OURO -> Icones.ouro(formas, cx, cy, lado,
-                            animacao.tempo());
-                    default -> {
-                        // Casa vazia: nada a desenhar.
-                    }
-                }
-            }
-        }
-    }
-
     private void desenharFlecha(ShapeRenderer formas, Partida partida,
             EstadoDaAnimacao animacao) {
         DisparoDeFlecha disparo = partida.getUltimoDisparo();
@@ -310,25 +307,6 @@ public final class PainelTabuleiro {
         Icones.flecha(formas, cx, cy, disparo.direcao(), lado * 0.42f, cor);
     }
 
-    private void desenharAgente(ShapeRenderer formas, Partida partida,
-            EstadoDaAnimacao animacao) {
-        AgenteInteligente agente = partida.getAgente();
-        float fator = Desenho.suavizar(animacao.progressoDoPasso());
-
-        float cx = centroXInterpolado(partida.getOrigemDoPasso(),
-                partida.getDestinoDoPasso(), fator);
-        float cy = centroYInterpolado(partida.getOrigemDoPasso(),
-                partida.getDestinoDoPasso(), fator);
-
-        // Um pequeno salto vertical dá peso ao movimento.
-        float salto = partida.agenteAndouNoUltimoPasso()
-                ? (float) Math.sin(fator * Math.PI) * lado * 0.06f : 0f;
-
-        Icones.agente(formas, cx, cy + salto, lado,
-                agente.getUltimaDirecao(), agente.estaVivo(),
-                agente.possuiOuro(), animacao.tempo());
-    }
-
     // -----------------------------------------------------------------------
     //  Camada de texto
     // -----------------------------------------------------------------------
@@ -339,6 +317,7 @@ public final class PainelTabuleiro {
         Mundo mundo = partida.getMundo();
         AgenteInteligente agente = partida.getAgente();
         boolean revelar = partida.mapaDeveSerRevelado();
+        desenharSprites(lote, partida, animacao, revelar);
 
         Desenho.texto(lote, ativos.fonteSecao, "MAPA DA CAVERNA",
                 area.x() + MARGEM_INTERNA + 2f,
@@ -387,5 +366,54 @@ public final class PainelTabuleiro {
         Desenho.textoCentralizado(lote, ativos.fonteMiuda, "INÍCIO",
                 centroX(0), y(0) + lado - 8f,
                 Paleta.INICIO);
+    }
+
+    private void desenharSprites(SpriteBatch lote, Partida partida,
+            EstadoDaAnimacao animacao, boolean revelar) {
+        Mundo mundo = partida.getMundo();
+        AgenteInteligente agente = partida.getAgente();
+        atualizarPosicaoVisualDoOuro(partida, agente);
+
+        for (int linha = 0; linha < Mundo.TAMANHO; linha++) {
+            for (int coluna = 0; coluna < Mundo.TAMANHO; coluna++) {
+                if (!revelar && !mundo.foiVisitada(linha, coluna)) {
+                    continue;
+                }
+                comSprite(lote, mundo.getElemento(linha, coluna),
+                        centroX(coluna), centroY(linha), lado * .72f);
+            }
+        }
+        float fator = Desenho.suavizar(animacao.progressoDoPasso());
+        float cx = centroXInterpolado(partida.getOrigemDoPasso(),
+                partida.getDestinoDoPasso(), fator);
+        float cy = centroYInterpolado(partida.getOrigemDoPasso(),
+                partida.getDestinoDoPasso(), fator);
+        desenharSprite(lote, ativos.agente, cx, cy, lado * .72f);
+        boolean ouroSendoRecolhido = partida.ouroFoiColetadoNoUltimoPasso()
+                && fator < 1f;
+        if (ouroSendoRecolhido) {
+            Posicao destino = partida.getDestinoDoPasso();
+            desenharSprite(lote, ativos.tesouro, centroX(destino.coluna()),
+                    centroY(destino.linha()), lado * .72f);
+        } else if (agente.possuiOuro()) {
+            desenharSprite(lote, ativos.tesouro, cx + lado * .22f,
+                    cy + lado * .22f, lado * .42f);
+        }
+    }
+
+    private void comSprite(SpriteBatch lote, char elemento, float x, float y,
+            float tamanho) {
+        switch (elemento) {
+            case Mundo.POCO -> desenharSprite(lote, ativos.poco, x, y, tamanho);
+            case Mundo.WUMPUS -> desenharSprite(lote, ativos.wumpus, x, y, tamanho);
+            case Mundo.OURO -> desenharSprite(lote, ativos.tesouro, x, y, tamanho);
+            default -> { }
+        }
+    }
+
+    private static void desenharSprite(SpriteBatch lote, com.badlogic.gdx.graphics.Texture textura,
+            float centroX, float centroY, float tamanho) {
+        lote.draw(textura, centroX - tamanho / 2f, centroY - tamanho / 2f,
+                tamanho, tamanho);
     }
 }

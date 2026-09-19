@@ -65,7 +65,7 @@ public final class CamadaResultado {
         float emblemaX = alvo.x() + 78f;
         float emblemaY = alvo.topo() - 80f;
         switch (partida.getSituacao()) {
-            case VITORIA -> Icones.trofeuComOuro(formas, emblemaX, emblemaY, 118f);
+            case VITORIA -> { }
             case MORTE -> Icones.caveira(formas, emblemaX, emblemaY, 150f);
             default -> relogio(formas, emblemaX, emblemaY, 30f,
                     cor, tempo);
@@ -98,6 +98,14 @@ public final class CamadaResultado {
         AgenteInteligente agente = partida.getAgente();
         Color cor = corDoResultado(situacao);
         Area alvo = cartao;
+
+        if (situacao == Situacao.VITORIA) {
+            float tamanho = 118f;
+            lote.draw(ativos.tesouro, emblemaX(alvo) - tamanho / 2f,
+                    emblemaY(alvo) + 28f - tamanho / 2f, tamanho, tamanho);
+            lote.draw(ativos.trofeu, emblemaX(alvo) - tamanho / 2f,
+                    emblemaY(alvo) - tamanho / 2f, tamanho, tamanho);
+        }
 
         float textoX = alvo.x() + 140f;
         Desenho.texto(lote, ativos.fonteBanner, situacao.getTitulo(),
@@ -147,5 +155,13 @@ public final class CamadaResultado {
             case LIMITE_ATINGIDO -> Paleta.ALERTA;
             default -> Paleta.NEUTRO;
         };
+    }
+
+    private static float emblemaX(Area alvo) {
+        return alvo.x() + 78f;
+    }
+
+    private static float emblemaY(Area alvo) {
+        return alvo.topo() - 80f;
     }
 }
