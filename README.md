@@ -1,8 +1,6 @@
 # Mundo de Wumpus — Interface Gráfica com libGDX
 
-Trabalho Final de **Computação Gráfica**  
-Universidade Federal do Pará · Campus Cametá · Faculdade de Sistemas de Informação  
-**Professor:** Keventon Guimarães  
+Trabalho Final de **Computação Gráfica** 
 
 Aplicação gráfica interativa do **Mundo de Wumpus** desenvolvida em **Java** com a biblioteca **libGDX**. O mapa é desenhado em uma grade 5×5 e a simulação ocorre de forma automática a cada intervalo de tempo, exibindo a posição do agente, seus elementos visuais, percepções em tempo real e o histórico completo da partida.
 
@@ -10,7 +8,7 @@ Aplicação gráfica interativa do **Mundo de Wumpus** desenvolvida em **Java** 
 
 ## 1. Requisitos do Sistema
 
-* **JDK (Java Development Kit)**: Versão 17 ou superior (testado com OpenJDK 17 e 25).
+* **JDK (Java Development Kit)**: Versão 17 ou superior (testado com OpenJDK 21, 25 e 26).
 * **Gradle Wrapper**: Acompanha o projeto (não é necessário instalar o Gradle separadamente).
 * **Sistema Operacional**: Linux, Windows ou macOS.
 
@@ -61,10 +59,10 @@ Você pode compilar um arquivo `.jar` único que embute todas as dependências e
 
 ---
 
-## 4. Executando em uma IDE (NetBeans / IntelliJ / Eclipse)
+## 4. Executando em uma IDE (NetBeans 31 / IntelliJ / Eclipse)
 
 1. **Abrir o projeto**:
-   * **Apache NetBeans**: *File → Open Project* e selecione a pasta do projeto.
+   * **Apache NetBeans 31**: *File → Open Project* e selecione a pasta do projeto.
    * **IntelliJ IDEA**: *File → Open* e selecione o arquivo `build.gradle.kts` (abrir como projeto Gradle).
    * **Eclipse**: *File → Import → Existing Gradle Project*.
 2. **Classe Principal**: `wumpusworld.Main`
