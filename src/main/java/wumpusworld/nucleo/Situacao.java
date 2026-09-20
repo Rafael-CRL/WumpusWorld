@@ -1,11 +1,5 @@
 package wumpusworld.nucleo;
 
-/**
- * Em que pé está a partida.
- *
- * <p>Enquanto for {@link #EM_ANDAMENTO} o mapa continua oculto; em qualquer
- * dos estados finais a interface revela o mapa completo, como pede o enunciado.</p>
- */
 public enum Situacao {
 
     EM_ANDAMENTO("EM ANDAMENTO", "O agente ainda está explorando a caverna."),
@@ -29,7 +23,6 @@ public enum Situacao {
         return descricao;
     }
 
-    /** Indica se a partida chegou ao fim. */
     public boolean encerrada() {
         return this != EM_ANDAMENTO;
     }

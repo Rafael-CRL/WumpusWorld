@@ -7,18 +7,8 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 
-/**
- * O mundo de Wumpus: a matriz do mapa e as regras que dependem dela.
- *
- * <p>Esta classe é a <strong>única dona da verdade</strong> sobre onde estão os
- * poços, o Wumpus e o ouro. Ela não imprime nada e não conhece a interface;
- * apenas responde perguntas. O agente só enxerga o mapa através de
- * {@link #percepcoesEm(Posicao)}, e a camada gráfica só revela uma casa depois
- * que ela é visitada — ou no fim da partida, quando o mapa completo é exibido.</p>
- */
 public class Mundo {
 
-    /** Quantidade de linhas e de colunas do mapa quadrado. */
     public static final int TAMANHO = 5;
 
     public static final char VAZIO = '.';
@@ -30,10 +20,8 @@ public class Mundo {
     private final char[][] mapa;
     private final boolean[][] visitado;
 
-    /** Cópia do mapa original, usada para redesenhar a fase quando reiniciada. */
     private final char[][] mapaOriginal;
 
-    /** Cria a fase fixa utilizada nas aulas 1 a 7. */
     public Mundo() {
         mapa = new char[TAMANHO][TAMANHO];
         visitado = new boolean[TAMANHO][TAMANHO];
@@ -42,13 +30,6 @@ public class Mundo {
         visitado[0][0] = true;
     }
 
-    /**
-     * Cria um mundo a partir de um mapa já montado.
-     *
-     * <p>Visível apenas dentro do pacote: é usado por {@link #sortear(Random)},
-     * por {@link #reiniciar()} e pelos testes automatizados, que precisam
-     * montar cenários controlados.</p>
-     */
     Mundo(char[][] mapaSorteado) {
         mapa = mapaSorteado;
         visitado = new boolean[TAMANHO][TAMANHO];
@@ -56,7 +37,6 @@ public class Mundo {
         visitado[0][0] = true;
     }
 
-    /** Preenche a matriz e posiciona os elementos da fase original. */
     private void criarMapa() {
         for (int linha = 0; linha < TAMANHO; linha++) {
             for (int coluna = 0; coluna < TAMANHO; coluna++) {
@@ -70,10 +50,6 @@ public class Mundo {
         mapa[4][4] = OURO;
         mapa[0][3] = FLECHA;
     }
-
-    // -----------------------------------------------------------------------
-    //  Consultas básicas
-    // -----------------------------------------------------------------------
 
     public boolean estaDentroDoMapa(int linha, int coluna) {
         return linha >= 0 && linha < TAMANHO
@@ -100,7 +76,6 @@ public class Mundo {
         removerElemento(posicao.linha(), posicao.coluna());
     }
 
-    /** Registra uma posição na memória visual do mapa. */
     public void marcarVisitada(int linha, int coluna) {
         visitado[linha][coluna] = true;
     }
@@ -109,16 +84,10 @@ public class Mundo {
         marcarVisitada(posicao.linha(), posicao.coluna());
     }
 
-    /** Informa se a casa já foi pisada pelo agente. */
     public boolean foiVisitada(int linha, int coluna) {
         return visitado[linha][coluna];
     }
 
-    // -----------------------------------------------------------------------
-    //  Percepções
-    // -----------------------------------------------------------------------
-
-    /** Procura um elemento nas quatro posições vizinhas. */
     private boolean existeVizinho(int linha, int coluna, char procurado) {
         for (Direcao direcao : Direcao.TODAS) {
             int linhaVizinha = linha + direcao.getDeltaLinha();
@@ -144,10 +113,6 @@ public class Mundo {
         return mapa[linha][coluna] == OURO;
     }
 
-    /**
-     * Devolve, de uma só vez, tudo o que pode ser sentido na casa informada.
-     * É a única porta de entrada legítima de informação para o agente.
-     */
     public Percepcoes percepcoesEm(int linha, int coluna) {
         return new Percepcoes(
                 temBrisa(linha, coluna),
@@ -159,15 +124,6 @@ public class Mundo {
         return percepcoesEm(posicao.linha(), posicao.coluna());
     }
 
-    // -----------------------------------------------------------------------
-    //  Flecha
-    // -----------------------------------------------------------------------
-
-    /**
-     * Faz a flecha percorrer uma linha reta até sair do mapa.
-     *
-     * @return {@code true} quando o Wumpus estava no caminho.
-     */
     public boolean atirarFlecha(int linha, int coluna, Direcao direcao) {
         Posicao flecha = new Posicao(linha, coluna).vizinha(direcao);
 
@@ -182,10 +138,6 @@ public class Mundo {
         return false;
     }
 
-    /**
-     * Calcula até onde a flecha viaja, sem alterar o mapa.
-     * Serve exclusivamente para animar o disparo na tela.
-     */
     public Posicao calcularAlcanceDaFlecha(Posicao origem, Direcao direcao) {
         Posicao atual = origem;
         Posicao proxima = origem.vizinha(direcao);
@@ -200,11 +152,6 @@ public class Mundo {
         return atual;
     }
 
-    // -----------------------------------------------------------------------
-    //  Apoio à camada de apresentação
-    // -----------------------------------------------------------------------
-
-    /** Lista das casas ainda não visitadas, útil para métricas de exploração. */
     public int quantidadeDeCasasVisitadas() {
         int total = 0;
         for (int linha = 0; linha < TAMANHO; linha++) {
@@ -217,7 +164,6 @@ public class Mundo {
         return total;
     }
 
-    /** Recria a mesma fase do zero, mantendo o desenho original do mapa. */
     public Mundo reiniciar() {
         return new Mundo(copiarMatriz(mapaOriginal));
     }
@@ -230,17 +176,6 @@ public class Mundo {
         return destino;
     }
 
-    // -----------------------------------------------------------------------
-    //  Geração de fases sorteadas (recurso extra da versão gráfica)
-    // -----------------------------------------------------------------------
-
-    /**
-     * Sorteia uma fase nova com dois poços, um Wumpus e um ouro.
-     *
-     * <p>As regras do jogo não mudam: apenas as posições. O sorteio só aceita
-     * um mapa quando existe pelo menos um caminho seguro entre a casa inicial
-     * e o ouro, de modo que a partida continue sendo vencível.</p>
-     */
     public static Mundo sortear(Random sorteador) {
         while (true) {
             char[][] candidato = new char[TAMANHO][TAMANHO];
@@ -252,8 +187,6 @@ public class Mundo {
             for (int linha = 0; linha < TAMANHO; linha++) {
                 for (int coluna = 0; coluna < TAMANHO; coluna++) {
                     Posicao posicao = new Posicao(linha, coluna);
-                    // A casa inicial e suas vizinhas ficam livres de perigo,
-                    // para que o agente não morra no primeiro passo.
                     if (posicao.distanciaAte(Posicao.INICIAL) > 1) {
                         livres.add(posicao);
                     }
@@ -279,7 +212,6 @@ public class Mundo {
         }
     }
 
-    /** Busca em largura: confirma que dá para ir da casa inicial até o ouro. */
     private static boolean existeCaminhoSeguro(char[][] candidato, Posicao destino) {
         boolean[][] alcancado = new boolean[TAMANHO][TAMANHO];
         Queue<Posicao> fila = new ArrayDeque<>();

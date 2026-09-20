@@ -5,16 +5,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Agente baseado em regras simples.
- *
- * <p>Ele combina memória, percepções e uma estimativa numérica de risco.
- * A lógica é exatamente a construída ao longo das aulas 1 a 7; o que mudou
- * aqui foi apenas a organização: as direções viraram um {@link Direcao enum},
- * as decisões viraram objetos ({@link Decisao}) e a memória interna passou a
- * ser consultável em modo somente leitura, para que a interface gráfica possa
- * desenhar o que o agente <em>acredita</em> sem interferir no que ele decide.</p>
- */
 public class AgenteInteligente {
 
     public static final int CUSTO_MOVIMENTO = -1;
@@ -24,11 +14,8 @@ public class AgenteInteligente {
     public static final int BONUS_VITORIA = 200;
     public static final int CUSTO_FLECHA = -10;
 
-    /** Peso do bônus dado a uma casa ainda não explorada. */
     private static final int BONUS_CASA_NOVA = 200;
-    /** Peso da penalidade por suspeita de perigo. */
     private static final int PESO_DO_RISCO = 150;
-    /** Peso da penalidade por repetir uma casa já conhecida. */
     private static final int PESO_DA_REPETICAO = 10;
 
     private int linha;
@@ -39,16 +26,12 @@ public class AgenteInteligente {
     private boolean possuiOuro;
     private boolean possuiFlecha = false;
 
-    /** Última direção efetivamente tomada; usada para orientar o desenho. */
     private Direcao ultimaDirecao = Direcao.DIREITA;
 
-    // visitas guarda memória; risco guarda suspeitas criadas pelas percepções.
     private final int[][] visitas;
     private final int[][] risco;
     private final boolean[][] percepcaoRegistrada;
 
-    // Guarda o caminho conhecido entre a casa inicial e a posição atual.
-    // Voltas repetidas são retiradas para tornar o retorno mais curto.
     private final ArrayList<Posicao> caminhoPercorrido = new ArrayList<>();
     private final Random sorteador;
 
@@ -56,7 +39,6 @@ public class AgenteInteligente {
         this(new Random());
     }
 
-    /** Construtor com semente fixa: útil para testes reproduzíveis. */
     public AgenteInteligente(long semente) {
         this(new Random(semente));
     }
@@ -68,24 +50,14 @@ public class AgenteInteligente {
         percepcaoRegistrada = new boolean[Mundo.TAMANHO][Mundo.TAMANHO];
         visitas[0][0] = 1;
 
-        // A primeira posição do caminho é a casa inicial.
         caminhoPercorrido.add(Posicao.INICIAL);
     }
 
-    // -----------------------------------------------------------------------
-    //  Percepção
-    // -----------------------------------------------------------------------
-
-    /**
-     * Brisa ou fedor aumentam a suspeita das casas vizinhas desconhecidas.
-     * Casas visitadas já são conhecidas e não recebem risco.
-     */
     public void observar(Mundo mundo, Percepcoes percepcoes) {
         if (!percepcoes.brisa() && !percepcoes.fedor()) {
             return;
         }
 
-        // A mesma percepção é registrada uma única vez nesta coordenada.
         if (percepcaoRegistrada[linha][coluna]) {
             return;
         }
@@ -105,14 +77,6 @@ public class AgenteInteligente {
         }
     }
 
-    // -----------------------------------------------------------------------
-    //  Decisão de movimento
-    // -----------------------------------------------------------------------
-
-    /**
-     * Calcula uma nota para cada vizinho. Casas novas recebem bônus; risco e
-     * repetição recebem penalidades. A maior nota é escolhida.
-     */
     public Direcao moverExplorando(Mundo mundo) {
         int melhorNota = Integer.MIN_VALUE;
         Direcao[] melhoresDirecoes = new Direcao[Direcao.TODAS.length];
@@ -156,12 +120,6 @@ public class AgenteInteligente {
         return escolhida;
     }
 
-    /**
-     * Mantém somente um caminho direto entre o início e a posição atual.
-     * Se o agente voltar a uma casa que já faz parte do caminho, as posições
-     * posteriores são retiradas. Assim, movimentos em círculo não serão
-     * repetidos durante o retorno com o ouro.
-     */
     private void registrarPosicaoNoCaminho() {
         Posicao atual = new Posicao(linha, coluna);
         int indiceEncontrado = caminhoPercorrido.indexOf(atual);
@@ -175,22 +133,13 @@ public class AgenteInteligente {
         }
     }
 
-    /**
-     * Volta pelo caminho conhecido durante a exploração.
-     * A posição atual é retirada da lista e a posição anterior vira o destino.
-     * Como esse caminho já foi percorrido com vida, ele é um caminho seguro.
-     *
-     * @return {@code true} quando o agente realmente andou uma casa.
-     */
     public boolean retornarPeloCaminho() {
         if (caminhoPercorrido.size() <= 1) {
             return false;
         }
 
-        // Remove a posição atual.
         caminhoPercorrido.remove(caminhoPercorrido.size() - 1);
 
-        // A última posição restante é a casa visitada imediatamente antes.
         Posicao posicaoAnterior
                 = caminhoPercorrido.get(caminhoPercorrido.size() - 1);
 
@@ -213,14 +162,6 @@ public class AgenteInteligente {
         return Direcao.DIREITA;
     }
 
-    // -----------------------------------------------------------------------
-    //  Flecha
-    // -----------------------------------------------------------------------
-
-    /**
-     * Quando sente fedor, aponta para uma casa vizinha desconhecida com maior
-     * risco. Empates ainda são resolvidos por sorteio.
-     */
     public Direcao escolherDirecaoDaFlecha(Mundo mundo) {
         int maiorRisco = Integer.MIN_VALUE;
         Direcao[] candidatas = new Direcao[Direcao.TODAS.length];
@@ -245,7 +186,6 @@ public class AgenteInteligente {
             }
         }
 
-        // Segurança para o caso de todos os vizinhos já serem conhecidos.
         if (quantidade == 0) {
             for (Direcao direcao : Direcao.TODAS) {
                 int novaLinha = linha + direcao.getDeltaLinha();
@@ -259,14 +199,9 @@ public class AgenteInteligente {
         return candidatas[sorteador.nextInt(quantidade)];
     }
 
-    /** Corpo a corpo com o Wumpus: sempre letal para o agente na regra estrita. */
     public boolean tentarMatarWumpus() {
         return false;
     }
-
-    // -----------------------------------------------------------------------
-    //  Estado
-    // -----------------------------------------------------------------------
 
     public void alterarPontuacao(int pontos) {
         pontuacao = pontuacao + pontos;
@@ -323,26 +258,14 @@ public class AgenteInteligente {
     public boolean possuiFlecha() {
         return possuiFlecha;
     }
-
-    // -----------------------------------------------------------------------
-    //  Memória do agente exposta em modo somente leitura
-    //
-    //  A interface usa estes dados para desenhar o que o agente acredita.
-    //  Nenhum deles revela o conteúdo real das casas: são apenas suspeitas
-    //  construídas a partir das percepções já sentidas.
-    // -----------------------------------------------------------------------
-
-    /** Suspeita acumulada sobre uma casa (0 significa nenhuma suspeita). */
     public int getRisco(int linha, int coluna) {
         return risco[linha][coluna];
     }
 
-    /** Quantas vezes o agente já pisou na casa. */
     public int getVisitas(int linha, int coluna) {
         return visitas[linha][coluna];
     }
 
-    /** Maior suspeita registrada até agora, usada para normalizar o mapa de calor. */
     public int getMaiorRisco() {
         int maior = 0;
         for (int linha = 0; linha < Mundo.TAMANHO; linha++) {
@@ -353,7 +276,6 @@ public class AgenteInteligente {
         return maior;
     }
 
-    /** Caminho seguro atualmente memorizado entre a casa inicial e o agente. */
     public List<Posicao> getCaminhoConhecido() {
         return Collections.unmodifiableList(caminhoPercorrido);
     }

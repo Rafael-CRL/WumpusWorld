@@ -47,7 +47,6 @@ public class TelaDaPartida extends ApplicationAdapter {
 
             @Override
             public boolean scrolled(float amountX, float amountY) {
-                // amountY costuma ser 1 (rolar para baixo) ou -1 (rolar para cima)
                 scrollY += amountY * 40f; 
                 if (scrollY < 0) scrollY = 0;
                 return true;
@@ -97,30 +96,29 @@ public class TelaDaPartida extends ApplicationAdapter {
             fonte.draw(lote, "JOGAR NOVAMENTE", 205, 332);
         }
 
-        // Histórico de Eventos
         fonte.getData().setScale(1.1f);
         fonte.draw(lote, "HISTÓRICO:", 600, 680);
         java.util.List<String> registro = partida.getRegistro();
         
         com.badlogic.gdx.graphics.g2d.GlyphLayout layout = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
         
-        float currentY = 30 - scrollY; // Posição influenciada pela rolagem
+        float currentY = 30 - scrollY;
         for (int i = registro.size() - 1; i >= 0; i--) {
             String texto = registro.get(i);
             layout.setText(fonte, texto, Color.WHITE, 380, -1, true);
             
-            // O draw() usa o Y como o topo do texto, então somamos a altura
-            float drawY = currentY + layout.height;
-            if (drawY > 650) break; // Passou do limite superior (atingimos os mais velhos visíveis)
             
-            if (drawY > 0) { // Só desenha se estiver dentro da tela (não caiu pra baixo)
+            float drawY = currentY + layout.height;
+            if (drawY > 650) break;
+            
+            if (drawY > 0) {
                 fonte.draw(lote, layout, 600, drawY);
             }
             
-            currentY += (layout.height + 12); // Sobe para a próxima mensagem (mais antiga)
+            currentY += (layout.height + 12);
         }
         
-        fonte.getData().setScale(1.5f); // reset para a próxima vez
+        fonte.getData().setScale(1.5f);
         
         lote.end();
     }
@@ -161,18 +159,17 @@ public class TelaDaPartida extends ApplicationAdapter {
                         formas.rect(cx - 20, cy - 20, 40, 40);
                     } else if (elem == Mundo.FLECHA) {
                         formas.setColor(Color.GREEN);
-                        formas.rect(cx - 5, cy - 20, 10, 40); // Flecha desenhada como uma linha verde fina
+                        formas.rect(cx - 5, cy - 20, 10, 40);
                     }
                 }
             }
         }
 
-        // Desenhar Agente
         Posicao pos = partida.getAgente().getPosicao();
         float ax = margemX + pos.coluna() * lado + lado / 2;
         float ay = margemY + (tamanho - 1 - pos.linha()) * lado + lado / 2;
         formas.setColor(Color.BLUE);
-        formas.circle(ax, ay, 20); // Agente como círculo azul
+        formas.circle(ax, ay, 20);
     }
 
     @Override

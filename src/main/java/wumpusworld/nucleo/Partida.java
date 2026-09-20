@@ -5,25 +5,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Árbitro da simulação: executa a partida um passo de cada vez.
- *
- * <p>Esta classe concentra o laço que antes vivia dentro do {@code main} do
- * modo texto. A separação é o que torna a versão gráfica possível sem duplicar
- * regra nenhuma: o console chama {@link #executarPasso()} dentro de um laço
- * com pausa, e a janela chama exatamente o mesmo método a cada intervalo do
- * relógio de animação. As duas apresentações consomem o mesmo estado.</p>
- *
- * <p><strong>Direção da dependência:</strong> {@code nucleo} não conhece nem o
- * console nem a libGDX. Quem desenha apenas lê; nada do que é desenhado
- * interfere nas decisões do agente.</p>
- */
 public final class Partida {
 
-    /**
-     * O limite vale apenas enquanto o agente ainda está procurando o ouro.
-     * Depois de encontrá-lo, o caminho de retorno sempre pode ser concluído.
-     */
     public static final int LIMITE_DE_EXPLORACAO = 180;
 
     private final Mundo mundo;
@@ -49,14 +32,9 @@ public final class Partida {
         registrar("Partida iniciada.");
     }
 
-    /** Cria uma partida com fase sorteada, mantendo as mesmas regras. */
     public static Partida comFaseSorteada(Random sorteador) {
         return new Partida(Mundo.sortear(sorteador), new AgenteInteligente());
     }
-
-    // -----------------------------------------------------------------------
-    //  O passo da simulação
-    // -----------------------------------------------------------------------
 
     public boolean executarPasso() {
         if (situacao.encerrada()) {
@@ -109,8 +87,6 @@ public final class Partida {
 
     private void dispararFlecha() {
         Direcao direcao = agente.escolherDirecaoDaFlecha(mundo);
-        
-        // Chance of shooting in the wrong direction
         if (Math.random() < 0.3) {
             Direcao[] todas = Direcao.values();
             direcao = todas[(int)(Math.random() * todas.length)];
@@ -160,7 +136,6 @@ public final class Partida {
                 registrar("Pegou uma flecha no chão.");
             }
             default -> {
-                // Casa vazia: nada acontece.
             }
         }
     }
@@ -196,10 +171,6 @@ public final class Partida {
         registro.add(evento);
     }
 
-    // -----------------------------------------------------------------------
-    //  Consultas de estado (usadas pelo console e pela janela gráfica)
-    // -----------------------------------------------------------------------
-
     public Mundo getMundo() {
         return mundo;
     }
@@ -216,22 +187,18 @@ public final class Partida {
         return turno;
     }
 
-    /** Sinais sentidos agora, na casa onde o agente está. */
     public Percepcoes getPercepcoesAtuais() {
         return mundo.percepcoesEm(agente.getPosicao());
     }
 
-    /** Histórico completo, do primeiro ao último acontecimento. */
     public List<String> getRegistro() {
         return Collections.unmodifiableList(registro);
     }
 
-    /** Casa de onde o agente saiu no passo mais recente (para a animação). */
     public Posicao getOrigemDoPasso() {
         return origemDoPasso;
     }
 
-    /** Casa onde o agente chegou no passo mais recente (para a animação). */
     public Posicao getDestinoDoPasso() {
         return destinoDoPasso;
     }
@@ -240,10 +207,6 @@ public final class Partida {
         return agenteAndouNoPasso;
     }
 
-    /**
-     * Ao fim da partida o mapa inteiro pode ser mostrado, como pede o enunciado.
-     * Antes disso, a interface só desenha o que o agente já visitou.
-     */
     public boolean mapaDeveSerRevelado() {
         return situacao.encerrada();
     }
