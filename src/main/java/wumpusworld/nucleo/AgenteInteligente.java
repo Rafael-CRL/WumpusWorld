@@ -25,11 +25,11 @@ public class AgenteInteligente {
     public static final int CUSTO_FLECHA = -10;
 
     /** Peso do bônus dado a uma casa ainda não explorada. */
-    private static final int BONUS_CASA_NOVA = 100;
+    private static final int BONUS_CASA_NOVA = 200;
     /** Peso da penalidade por suspeita de perigo. */
-    private static final int PESO_DO_RISCO = 120;
+    private static final int PESO_DO_RISCO = 150;
     /** Peso da penalidade por repetir uma casa já conhecida. */
-    private static final int PESO_DA_REPETICAO = 5;
+    private static final int PESO_DA_REPETICAO = 10;
 
     private int linha;
     private int coluna;
@@ -37,7 +37,7 @@ public class AgenteInteligente {
     private int pontuacao;
     private boolean vivo = true;
     private boolean possuiOuro;
-    private boolean possuiFlecha = true;
+    private boolean possuiFlecha = false;
 
     /** Última direção efetivamente tomada; usada para orientar o desenho. */
     private Direcao ultimaDirecao = Direcao.DIREITA;
@@ -113,7 +113,7 @@ public class AgenteInteligente {
      * Calcula uma nota para cada vizinho. Casas novas recebem bônus; risco e
      * repetição recebem penalidades. A maior nota é escolhida.
      */
-    public Decisao moverExplorando(Mundo mundo) {
+    public Direcao moverExplorando(Mundo mundo) {
         int melhorNota = Integer.MIN_VALUE;
         Direcao[] melhoresDirecoes = new Direcao[Direcao.TODAS.length];
         int quantidadeDeMelhores = 0;
@@ -153,8 +153,7 @@ public class AgenteInteligente {
         quantidadeDeMovimentos++;
         alterarPontuacao(CUSTO_MOVIMENTO);
 
-        return new Decisao(escolhida, melhorNota,
-                risco[linha][coluna], visitas[linha][coluna]);
+        return escolhida;
     }
 
     /**
@@ -260,9 +259,9 @@ public class AgenteInteligente {
         return candidatas[sorteador.nextInt(quantidade)];
     }
 
-    /** Corpo a corpo com o Wumpus: metade de chance para cada lado. */
+    /** Corpo a corpo com o Wumpus: sempre letal para o agente na regra estrita. */
     public boolean tentarMatarWumpus() {
-        return sorteador.nextBoolean();
+        return false;
     }
 
     // -----------------------------------------------------------------------
@@ -283,6 +282,10 @@ public class AgenteInteligente {
 
     public void pegarOuro() {
         possuiOuro = true;
+    }
+
+    public void pegarFlecha() {
+        possuiFlecha = true;
     }
 
     public int getLinha() {

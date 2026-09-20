@@ -25,6 +25,7 @@ public class Mundo {
     public static final char POCO = 'P';
     public static final char WUMPUS = 'W';
     public static final char OURO = 'O';
+    public static final char FLECHA = 'F';
 
     private final char[][] mapa;
     private final boolean[][] visitado;
@@ -67,6 +68,7 @@ public class Mundo {
         mapa[3][1] = POCO;
         mapa[2][3] = WUMPUS;
         mapa[4][4] = OURO;
+        mapa[0][3] = FLECHA;
     }
 
     // -----------------------------------------------------------------------
@@ -263,11 +265,13 @@ public class Mundo {
             Posicao segundoPoco = livres.get(1);
             Posicao wumpus = livres.get(2);
             Posicao ouro = livres.get(3);
+            Posicao flecha = livres.get(4);
 
             candidato[primeiroPoco.linha()][primeiroPoco.coluna()] = POCO;
             candidato[segundoPoco.linha()][segundoPoco.coluna()] = POCO;
             candidato[wumpus.linha()][wumpus.coluna()] = WUMPUS;
             candidato[ouro.linha()][ouro.coluna()] = OURO;
+            candidato[flecha.linha()][flecha.coluna()] = FLECHA;
 
             if (existeCaminhoSeguro(candidato, ouro)) {
                 return new Mundo(candidato);

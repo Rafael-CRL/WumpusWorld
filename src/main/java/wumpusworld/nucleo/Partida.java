@@ -29,15 +29,13 @@ public final class Partida {
     private final Mundo mundo;
     private final AgenteInteligente agente;
 
-    private final List<EventoJogo> registro = new ArrayList<>();
-    private final List<EventoJogo> eventosDoPasso = new ArrayList<>();
+    private final List<String> registro = new ArrayList<>();
 
     private Situacao situacao = Situacao.EM_ANDAMENTO;
     private int turno;
 
     private Posicao origemDoPasso = Posicao.INICIAL;
     private Posicao destinoDoPasso = Posicao.INICIAL;
-    private DisparoDeFlecha ultimoDisparo;
     private boolean ouroColetadoNoPasso;
     private boolean agenteAndouNoPasso;
 
@@ -48,9 +46,7 @@ public final class Partida {
     public Partida(Mundo mundo, AgenteInteligente agente) {
         this.mundo = mundo;
         this.agente = agente;
-        registrar(TipoEvento.SISTEMA,
-                "Partida iniciada na casa " + Posicao.INICIAL
-                + ". O agente procura o ouro e precisa voltar vivo.");
+        registrar("Partida iniciada.");
     }
 
     /** Cria uma partida com fase sorteada, mantendo as mesmas regras. */
@@ -62,21 +58,12 @@ public final class Partida {
     //  O passo da simulação
     // -----------------------------------------------------------------------
 
-    /**
-     * Executa um único passo do agente, na mesma ordem das aulas:
-     * perceber, deduzir, eventualmente atirar, mover e resolver a casa.
-     *
-     * @return {@code true} quando o passo foi executado; {@code false} quando a
-     *         partida já havia terminado.
-     */
     public boolean executarPasso() {
         if (situacao.encerrada()) {
             return false;
         }
 
         turno++;
-        eventosDoPasso.clear();
-        ultimoDisparo = null;
         ouroColetadoNoPasso = false;
         origemDoPasso = agente.getPosicao();
 
@@ -95,15 +82,11 @@ public final class Partida {
         return true;
     }
 
-    /** O objetivo mudou: não é mais explorar, mas voltar para casa. */
     private void executarRetorno() {
         if (agente.retornarPeloCaminho()) {
-            registrar(TipoEvento.DECISAO,
-                    "Modo retorno: refazendo o caminho seguro até "
-                    + agente.getPosicao() + ".");
+            registrar("Voltando pelo caminho seguro.");
         } else {
-            registrar(TipoEvento.DECISAO,
-                    "Retorno concluído: o agente já está na casa inicial.");
+            registrar("Chegou na base inicial.");
         }
     }
 
@@ -111,28 +94,28 @@ public final class Partida {
         Percepcoes percepcoes = mundo.percepcoesEm(agente.getPosicao());
 
         if (percepcoes.brisa() || percepcoes.fedor()) {
-            registrar(TipoEvento.PERCEPCAO,
-                    "Em " + agente.getPosicao() + " o agente sentiu "
-                    + percepcoes.descricao() + ".");
+            registrar("Sentiu " + percepcoes.descricao() + ".");
         }
 
         agente.observar(mundo, percepcoes);
 
-        // O fedor, e não um sorteio de momento, provoca o disparo.
         if (percepcoes.fedor() && agente.possuiFlecha()) {
             dispararFlecha();
         }
 
-        Decisao decisao = agente.moverExplorando(mundo);
-        registrar(TipoEvento.DECISAO,
-                "Andou para " + decisao.direcao().getRotulo()
-                + " (risco " + decisao.risco()
-                + ", visitas " + decisao.visitas()
-                + ", nota " + decisao.nota() + ").");
+        Direcao direcao = agente.moverExplorando(mundo);
+        registrar("Andou para " + direcao.getRotulo() + ".");
     }
 
     private void dispararFlecha() {
         Direcao direcao = agente.escolherDirecaoDaFlecha(mundo);
+        
+        // Chance of shooting in the wrong direction
+        if (Math.random() < 0.3) {
+            Direcao[] todas = Direcao.values();
+            direcao = todas[(int)(Math.random() * todas.length)];
+        }
+
         Posicao origem = agente.getPosicao();
         Posicao destino = mundo.calcularAlcanceDaFlecha(origem, direcao);
 
@@ -141,59 +124,40 @@ public final class Partida {
 
         boolean acertou = mundo.atirarFlecha(
                 origem.linha(), origem.coluna(), direcao);
-        ultimoDisparo = new DisparoDeFlecha(origem, destino, direcao, acertou);
 
-        registrar(TipoEvento.FLECHA,
-                "Fedor detectado: flecha disparada para "
-                + direcao.getRotulo() + " (" + AgenteInteligente.CUSTO_FLECHA
-                + " pontos).");
+        registrar("Atirou flecha para " + direcao.getRotulo() + ".");
 
         if (acertou) {
             agente.alterarPontuacao(AgenteInteligente.BONUS_WUMPUS);
-            registrar(TipoEvento.FLECHA,
-                    "GRITO! A flecha acertou o Wumpus (+"
-                    + AgenteInteligente.BONUS_WUMPUS + " pontos).");
+            registrar("GRITO! Acertou o Wumpus!");
         } else {
-            registrar(TipoEvento.FLECHA,
-                    "A hipótese estava errada: a flecha não acertou nada.");
+            registrar("Errou a flecha.");
         }
     }
 
-    /** Aplica as consequências do conteúdo da casa em que o agente parou. */
     private void resolverCasaAtual() {
         Posicao posicao = agente.getPosicao();
 
         switch (mundo.getElemento(posicao)) {
             case Mundo.POCO -> {
-                registrar(TipoEvento.PERIGO,
-                        "A estimativa falhou: o agente caiu no poço em "
-                        + posicao + ".");
+                registrar("Caiu no poço!");
                 aplicarMorte();
             }
             case Mundo.WUMPUS -> {
-                registrar(TipoEvento.PERIGO,
-                        "O agente encontrou o Wumpus em " + posicao
-                        + " sem flecha. Corpo a corpo!");
-                if (agente.tentarMatarWumpus()) {
-                    mundo.removerElemento(posicao);
-                    agente.alterarPontuacao(AgenteInteligente.BONUS_WUMPUS);
-                    registrar(TipoEvento.PERIGO,
-                            "O agente venceu a luta e matou o Wumpus (+"
-                            + AgenteInteligente.BONUS_WUMPUS + " pontos).");
-                } else {
-                    registrar(TipoEvento.PERIGO, "O Wumpus venceu a luta.");
-                    aplicarMorte();
-                }
+                registrar("Devorado pelo Wumpus!");
+                aplicarMorte();
             }
             case Mundo.OURO -> {
                 agente.pegarOuro();
                 mundo.removerElemento(posicao);
                 agente.alterarPontuacao(AgenteInteligente.BONUS_OURO);
                 ouroColetadoNoPasso = true;
-                registrar(TipoEvento.TESOURO,
-                        "BRILHO! O ouro foi recolhido em " + posicao + " (+"
-                        + AgenteInteligente.BONUS_OURO
-                        + " pontos). Agora é voltar ao início.");
+                registrar("Pegou o OURO! Voltando...");
+            }
+            case Mundo.FLECHA -> {
+                agente.pegarFlecha();
+                mundo.removerElemento(posicao);
+                registrar("Pegou uma flecha no chão.");
             }
             default -> {
                 // Casa vazia: nada acontece.
@@ -209,36 +173,27 @@ public final class Partida {
     private void avaliarFimDaPartida() {
         if (!agente.estaVivo()) {
             situacao = Situacao.MORTE;
-            registrar(TipoEvento.DERROTA,
-                    "Fim de jogo. Pontuação final: " + agente.getPontuacao() + ".");
+            registrar("GAME OVER. Pontos: " + agente.getPontuacao());
             return;
         }
 
         if (agente.possuiOuro() && agente.getPosicao().equals(Posicao.INICIAL)) {
             agente.alterarPontuacao(AgenteInteligente.BONUS_VITORIA);
             situacao = Situacao.VITORIA;
-            registrar(TipoEvento.VITORIA,
-                    "O agente voltou com o ouro (+"
-                    + AgenteInteligente.BONUS_VITORIA
-                    + " pontos). Pontuação final: "
-                    + agente.getPontuacao() + ".");
+            registrar("VENCEU! Pontos: " + agente.getPontuacao());
             return;
         }
 
         if (!agente.possuiOuro()
                 && agente.getQuantidadeDeMovimentos() >= LIMITE_DE_EXPLORACAO) {
             situacao = Situacao.LIMITE_ATINGIDO;
-            registrar(TipoEvento.DERROTA,
-                    "O limite de " + LIMITE_DE_EXPLORACAO
-                    + " movimentos foi atingido. Pontuação final: "
-                    + agente.getPontuacao() + ".");
+            registrar("Fim do tempo! Pontos: " + agente.getPontuacao());
         }
     }
 
-    private void registrar(TipoEvento tipo, String mensagem) {
-        EventoJogo evento = new EventoJogo(turno, tipo, mensagem);
+    private void registrar(String mensagem) {
+        String evento = agente.getPosicao() + " " + mensagem;
         registro.add(evento);
-        eventosDoPasso.add(evento);
     }
 
     // -----------------------------------------------------------------------
@@ -267,13 +222,8 @@ public final class Partida {
     }
 
     /** Histórico completo, do primeiro ao último acontecimento. */
-    public List<EventoJogo> getRegistro() {
+    public List<String> getRegistro() {
         return Collections.unmodifiableList(registro);
-    }
-
-    /** Somente os acontecimentos gerados no passo mais recente. */
-    public List<EventoJogo> getEventosDoUltimoPasso() {
-        return Collections.unmodifiableList(eventosDoPasso);
     }
 
     /** Casa de onde o agente saiu no passo mais recente (para a animação). */
@@ -288,15 +238,6 @@ public final class Partida {
 
     public boolean agenteAndouNoUltimoPasso() {
         return agenteAndouNoPasso;
-    }
-
-    public boolean ouroFoiColetadoNoUltimoPasso() {
-        return ouroColetadoNoPasso;
-    }
-
-    /** Disparo ocorrido no passo mais recente, ou {@code null} se não houve. */
-    public DisparoDeFlecha getUltimoDisparo() {
-        return ultimoDisparo;
     }
 
     /**
