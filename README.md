@@ -1,7 +1,5 @@
 # Mundo de Wumpus — Interface Gráfica com libGDX
 
-Trabalho Final de **Computação Gráfica** 
-
 Aplicação gráfica interativa do **Mundo de Wumpus** desenvolvida em **Java** com a biblioteca **libGDX**. O mapa é desenhado em uma grade 5×5 e a simulação ocorre de forma automática a cada intervalo de tempo, exibindo a posição do agente, seus elementos visuais, percepções em tempo real e o histórico completo da partida.
 
 ---
