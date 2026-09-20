@@ -1,20 +1,19 @@
 package wumpusworld.grafico;
 
+import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-
 import wumpusworld.nucleo.Mundo;
 import wumpusworld.nucleo.Partida;
 import wumpusworld.nucleo.Posicao;
 
-import com.badlogic.gdx.ApplicationAdapter;
-
 public class TelaDaPartida extends ApplicationAdapter {
+
     private SpriteBatch lote;
     private ShapeRenderer formas;
     private BitmapFont fonte;
@@ -22,20 +21,26 @@ public class TelaDaPartida extends ApplicationAdapter {
     private float tempo;
     private float scrollY = 0f;
 
+    private static final float BOTAO_X = 185f;
+    private static final float BOTAO_Y = 275f;
+    private static final float BOTAO_LARGURA = 230f;
+    private static final float BOTAO_ALTURA = 50f;
+
     @Override
     public void create() {
         this.lote = new SpriteBatch();
         this.formas = new ShapeRenderer();
         this.fonte = new BitmapFont();
-        this.fonte.getData().setScale(1.5f);
+        this.fonte.getData().setScale(1.3f);
         this.partida = new Partida();
-        
+
         Gdx.input.setInputProcessor(new com.badlogic.gdx.InputAdapter() {
             @Override
             public boolean touchDown(int screenX, int screenY, int pointer, int button) {
                 if (partida.getSituacao().encerrada()) {
                     float drawY = 700 - screenY;
-                    if (screenX >= 200 && screenX <= 400 && drawY >= 300 && drawY <= 350) {
+                    if (screenX >= BOTAO_X && screenX <= BOTAO_X + BOTAO_LARGURA
+                            && drawY >= BOTAO_Y && drawY <= BOTAO_Y + BOTAO_ALTURA) {
                         partida = new Partida();
                         tempo = 0f;
                         scrollY = 0f;
@@ -47,8 +52,10 @@ public class TelaDaPartida extends ApplicationAdapter {
 
             @Override
             public boolean scrolled(float amountX, float amountY) {
-                scrollY += amountY * 40f; 
-                if (scrollY < 0) scrollY = 0;
+                scrollY += amountY * 40f;
+                if (scrollY < 0) {
+                    scrollY = 0;
+                }
                 return true;
             }
         });
@@ -57,7 +64,7 @@ public class TelaDaPartida extends ApplicationAdapter {
     @Override
     public void render() {
         float delta = Gdx.graphics.getDeltaTime();
-        Gdx.gl.glClearColor(0.2f, 0.2f, 0.2f, 1);
+        Gdx.gl.glClearColor(0.18f, 0.18f, 0.18f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         if (!partida.getSituacao().encerrada()) {
@@ -68,58 +75,99 @@ public class TelaDaPartida extends ApplicationAdapter {
             }
         }
 
+        // --- Renderização de Formas (ShapeRenderer) ---
         formas.begin(ShapeRenderer.ShapeType.Filled);
         desenharGradeEElementos();
-        
+        desenharLegenda();
+
+        // Botão de reinício se a partida terminou (estilo limpo com borda)
         if (partida.getSituacao().encerrada()) {
-            formas.setColor(0.2f, 0.6f, 0.2f, 1);
-            formas.rect(200, 300, 200, 50);
+            formas.setColor(0.15f, 0.55f, 0.25f, 1f);
+            formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
         }
-        
         formas.end();
 
+        if (partida.getSituacao().encerrada()) {
+            formas.begin(ShapeRenderer.ShapeType.Line);
+            formas.setColor(0.35f, 0.85f, 0.45f, 1f);
+            formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
+            formas.end();
+        }
+
+        // --- Renderização de Textos (SpriteBatch) ---
         lote.begin();
+
+        // HUD - Painel Superior Esquerdo
+        Posicao posAgente = partida.getAgente().getPosicao();
+        fonte.getData().setScale(1.2f);
         fonte.draw(lote, "Situação: " + partida.getSituacao().getTitulo(), 50, 680);
-        fonte.draw(lote, "Pontuação: " + partida.getAgente().getPontuacao() + " | Movimentos: " + partida.getAgente().getQuantidadeDeMovimentos(), 50, 650);
-        
-        String inventario = "Ouro: " + (partida.getAgente().possuiOuro() ? "Sim" : "Não") + 
-                            " | Flecha: " + (partida.getAgente().possuiFlecha() ? "Sim" : "Não");
+        fonte.draw(lote, "Posição Atual: " + posAgente + " | Movimentos: " + partida.getAgente().getQuantidadeDeMovimentos() + " | Pontos: " + partida.getAgente().getPontuacao(), 50, 650);
+
+        String inventario = "Ouro: " + (partida.getAgente().possuiOuro() ? "Sim" : "Não")
+                + " | Flecha: " + (partida.getAgente().possuiFlecha() ? "Sim" : "Não");
         fonte.draw(lote, inventario, 50, 620);
-        
+
         if (partida.getAgente().estaVivo()) {
             String percepcoesStr = partida.getPercepcoesAtuais().descricao();
-            if (percepcoesStr.isEmpty()) percepcoesStr = "Nenhuma";
+            if (percepcoesStr.isEmpty()) {
+                percepcoesStr = "Nenhuma";
+            }
             fonte.draw(lote, "Percepções: " + percepcoesStr, 50, 590);
         }
 
-        if (partida.getSituacao().encerrada()) {
-            fonte.draw(lote, "JOGAR NOVAMENTE", 205, 332);
+        // Desenhar Rótulos dos Eixos (Apenas 0 a 4)
+        fonte.getData().setScale(1.1f);
+        int tamanho = Mundo.TAMANHO;
+        float lado = 100f;
+        float margemX = 50f;
+        float margemY = 50f;
+
+        // Números das colunas (0 a 4 na parte inferior da grade)
+        for (int c = 0; c < tamanho; c++) {
+            float cx = margemX + c * lado + lado / 2 - 5;
+            fonte.draw(lote, String.valueOf(c), cx, margemY - 12);
+        }
+        // Números das linhas (0 a 4 na lateral esquerda da grade)
+        for (int l = 0; l < tamanho; l++) {
+            float ly = margemY + (tamanho - 1 - l) * lado + lado / 2 + 7;
+            fonte.draw(lote, String.valueOf(l), margemX - 25, ly);
         }
 
+        // Legenda - Textos
+        desenharTextosDaLegenda();
+
+        // Texto do Botão "JOGAR NOVAMENTE" centralizado
+        if (partida.getSituacao().encerrada()) {
+            fonte.getData().setScale(1.15f);
+            GlyphLayout layoutBotao = new GlyphLayout(fonte, "JOGAR NOVAMENTE");
+            float tx = BOTAO_X + (BOTAO_LARGURA - layoutBotao.width) / 2f;
+            float ty = BOTAO_Y + (BOTAO_ALTURA + layoutBotao.height) / 2f;
+            fonte.draw(lote, layoutBotao, tx, ty);
+        }
+
+        // Painel do Histórico (Lado Direito)
         fonte.getData().setScale(1.1f);
-        fonte.draw(lote, "HISTÓRICO:", 600, 680);
+        fonte.draw(lote, "HISTÓRICO DE EVENTOS:", 600, 530);
         java.util.List<String> registro = partida.getRegistro();
-        
-        com.badlogic.gdx.graphics.g2d.GlyphLayout layout = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
-        
+
+        GlyphLayout layout = new GlyphLayout();
         float currentY = 30 - scrollY;
         for (int i = registro.size() - 1; i >= 0; i--) {
             String texto = registro.get(i);
-            layout.setText(fonte, texto, Color.WHITE, 380, -1, true);
-            
-            
+            layout.setText(fonte, texto, Color.WHITE, 370, -1, true);
+
             float drawY = currentY + layout.height;
-            if (drawY > 650) break;
-            
+            if (drawY > 500) {
+                break;
+            }
+
             if (drawY > 0) {
                 fonte.draw(lote, layout, 600, drawY);
             }
-            
-            currentY += (layout.height + 12);
+
+            currentY += (layout.height + 10);
         }
-        
-        fonte.getData().setScale(1.5f);
-        
+
         lote.end();
     }
 
@@ -137,7 +185,7 @@ public class TelaDaPartida extends ApplicationAdapter {
                 boolean conhecida = partida.getMundo().foiVisitada(l, c) || partida.getSituacao().encerrada();
 
                 if (conhecida) {
-                    formas.setColor(0.7f, 0.7f, 0.7f, 1);
+                    formas.setColor(0.75f, 0.75f, 0.75f, 1);
                 } else {
                     formas.setColor(0.3f, 0.3f, 0.3f, 1);
                 }
@@ -150,10 +198,10 @@ public class TelaDaPartida extends ApplicationAdapter {
 
                     if (elem == Mundo.POCO) {
                         formas.setColor(Color.BLACK);
-                        formas.circle(cx, cy, 30);
+                        formas.circle(cx, cy, 28);
                     } else if (elem == Mundo.WUMPUS) {
                         formas.setColor(Color.RED);
-                        formas.circle(cx, cy, 30);
+                        formas.circle(cx, cy, 28);
                     } else if (elem == Mundo.OURO) {
                         formas.setColor(Color.YELLOW);
                         formas.rect(cx - 20, cy - 20, 40, 40);
@@ -172,6 +220,48 @@ public class TelaDaPartida extends ApplicationAdapter {
         formas.circle(ax, ay, 20);
     }
 
+    private void desenharLegenda() {
+        float baseX = 600f;
+        float baseY = 560f;
+
+        // Fundo do painel de legenda
+        formas.setColor(0.25f, 0.25f, 0.25f, 1);
+        formas.rect(baseX, baseY, 370, 120);
+
+        // Agente (Círculo Azul)
+        formas.setColor(Color.BLUE);
+        formas.circle(baseX + 25, baseY + 95, 10);
+
+        // Poço (Círculo Preto)
+        formas.setColor(Color.BLACK);
+        formas.circle(baseX + 25, baseY + 60, 10);
+
+        // Wumpus (Círculo Vermelho)
+        formas.setColor(Color.RED);
+        formas.circle(baseX + 25, baseY + 25, 10);
+
+        // Ouro (Quadrado Amarelo)
+        formas.setColor(Color.YELLOW);
+        formas.rect(baseX + 195, baseY + 85, 18, 18);
+
+        // Flecha (Retângulo Verde)
+        formas.setColor(Color.GREEN);
+        formas.rect(baseX + 200, baseY + 50, 8, 20);
+    }
+
+    private void desenharTextosDaLegenda() {
+        float baseX = 600f;
+        float baseY = 560f;
+
+        fonte.getData().setScale(1.0f);
+        fonte.draw(lote, "Agente", baseX + 45, baseY + 100);
+        fonte.draw(lote, "Poço", baseX + 45, baseY + 65);
+        fonte.draw(lote, "Wumpus", baseX + 45, baseY + 30);
+
+        fonte.draw(lote, "Ouro", baseX + 225, baseY + 100);
+        fonte.draw(lote, "Flecha", baseX + 225, baseY + 65);
+    }
+
     @Override
     public void dispose() {
         fonte.dispose();
@@ -179,3 +269,4 @@ public class TelaDaPartida extends ApplicationAdapter {
         formas.dispose();
     }
 }
+

@@ -114,15 +114,16 @@ src/main/java/wumpusworld/
 
 ---
 
-## 7. Regras e Tabela de Pontuação
+## 8. Mapeamento de Coordenadas (Matriz → Tela)
 
-| Evento | Pontuação |
-|---|---|
-| Cada Movimento realizado | -1 ponto |
-| Coletar o Ouro | +100 pontos |
-| Retornar à casa inicial `[0][0]` com o Ouro | +200 pontos |
-| Acertar e matar o Wumpus | +50 pontos |
-| Disparar uma Flecha | -10 pontos |
-| Morrer (cair em poço ou ser devorado pelo Wumpus) | -100 pontos |
+No projeto, o sistema de coordenadas do mundo (matriz $5 \times 5$, onde `[0][0]` é o canto superior esquerdo da matriz) é convertido para as coordenadas de renderização bidimensional da libGDX (onde o eixo Y cresce de baixo para cima) da seguinte forma:
 
-*A partida termina quando o agente morre, retorna à casa inicial `[0][0]` com o ouro, ou atinge o limite de 180 movimentos sem o ouro.*
+```java
+float x = margemX + coluna * tamanhoCelula;
+float y = margemY + (tamanhoMatriz - 1 - linha) * tamanhoCelula;
+```
+
+* **Eixo X**: `x = 50 + coluna * 100` (deslocamento horizontal com base na coluna).
+* **Eixo Y**: `y = 50 + (4 - linha) * 100` (inversão do eixo vertical para que a linha `0` fique posicionada no topo da grade na tela).
+* **Parâmetros**: `tamanhoCelula = 100px`, `margemX = 50px`, `margemY = 50px`.
+
