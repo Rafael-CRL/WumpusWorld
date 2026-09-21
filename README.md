@@ -22,7 +22,7 @@ Windows:
 .\gradlew.bat run
 ```
 
-No NetBeans (com suporte a Gradle) ou no IntelliJ IDEA, abra/importe o projeto pela pasta ou por `build.gradle.kts`, aguarde a sincronização e execute a tarefa `application > run`. Também é possível executar o método `main` de `wumpusworld.desktop.DesktopLauncher`. No macOS, a tarefa `run` configura `-XstartOnFirstThread`; acrescente essa opção à JVM ao executar a classe diretamente pela IDE.
+**NetBeans** (8.2+/Apache NetBeans com suporte a Gradle): `File > Open Project`, escolha a pasta do projeto (ícone de Gradle), aguarde a sincronização e use `Run Project` (F6), ou execute a tarefa `application > run` na aba de tarefas Gradle. A biblioteca gráfica é LibGDX, baixada automaticamente pelo Gradle; o JDK do projeto pode ser qualquer versão 17 ou superior. No IntelliJ IDEA, importe por `build.gradle.kts` e execute a mesma tarefa. Também é possível executar o método `main` de `wumpusworld.desktop.DesktopLauncher`. No macOS, a tarefa `run` configura `-XstartOnFirstThread`; acrescente essa opção à JVM ao executar a classe diretamente pela IDE.
 
 ## Como funciona
 
@@ -40,7 +40,7 @@ O ouro é coletado ao entrar na casa onde está e o agente volta pelo caminho pe
 
 ## Linhas e colunas na tela
 
-O domínio usa `[linha, coluna]` com origem no canto superior esquerdo. `TabuleiroActor` calcula o lado do tabuleiro pelo menor lado da área disponível e divide por 5 (`passo`); `Grade` faz a conversão. A coluna vira o deslocamento horizontal, `x + coluna * passo`; a linha vira o vertical, `y + (5 - 1 - linha) * passo`, porque o eixo Y do LibGDX cresce para cima. Cada casa mostra seu rótulo `linha,coluna`.
+O domínio usa `[linha, coluna]` com origem no canto superior esquerdo. `TabuleiroActor` calcula o lado do tabuleiro pelo menor lado da área disponível e divide por 5 (`passo`); `Grade` faz a conversão. A coluna vira o deslocamento horizontal, `x + coluna * passo`; a linha vira o vertical, `y + (5 - 1 - linha) * passo`, porque o eixo Y do LibGDX cresce para cima. Cada casa mostra seu rótulo `[linha,coluna]`.
 
 ## Regras
 
