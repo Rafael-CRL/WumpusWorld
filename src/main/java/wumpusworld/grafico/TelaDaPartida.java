@@ -1,483 +1,287 @@
 package wumpusworld.grafico;
 
-import java.util.Random;
-
+import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputAdapter;
-import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
-
-import wumpusworld.nucleo.AgenteInteligente;
-import wumpusworld.nucleo.DisparoDeFlecha;
-import wumpusworld.nucleo.EventoJogo;
+import wumpusworld.nucleo.Mundo;
 import wumpusworld.nucleo.Partida;
 import wumpusworld.nucleo.Posicao;
-import wumpusworld.nucleo.Situacao;
-import wumpusworld.nucleo.TipoEvento;
 
-/**
- * Tela principal: monta o layout, controla o relógio da simulação e desenha.
- *
- * <h2>Movimento automático</h2>
- * A janela nunca é bloqueada esperando o agente. A cada quadro o tempo real
- * decorrido é somado a um relógio; quando ele atinge o intervalo configurado,
- * a tela pede <em>um</em> passo à {@link Partida} e reinicia a contagem. Entre
- * dois passos, a posição desenhada do agente é interpolada entre a casa de
- * origem e a de destino, de modo que cada movimento possa ser acompanhado com
- * os olhos. É o equivalente, em libGDX, ao {@code javax.swing.Timer} sugerido
- * no enunciado.
- *
- * <h2>Separação de responsabilidades</h2>
- * Esta classe lê o estado da partida e o traduz em pixels. Ela não consulta o
- * conteúdo das casas para decidir nada pelo agente: desenha apenas o que já é
- * conhecido, e só revela o mapa inteiro quando a partida termina.
- */
-public final class TelaDaPartida extends ScreenAdapter {
+public class TelaDaPartida extends ApplicationAdapter {
 
-    /** Resolução de projeto: todo o layout é descrito nestas unidades. */
-    public static final float LARGURA_VIRTUAL = 1400f;
-    public static final float ALTURA_VIRTUAL = 900f;
-
-    private static final float MARGEM = 24f;
-    private static final float ESPACO = 16f;
-    private static final float ALTURA_DA_BARRA = 78f;
-    private static final float ALTURA_DO_RODAPE = 100f;
-    private static final float LARGURA_DO_TABULEIRO = 660f;
-
-    /** Intervalo padrão entre dois passos do agente, em segundos. */
-    private static final float INTERVALO_BASE = 0.62f;
-
-    private static final float[] VELOCIDADES =
-        {0.25f, 0.5f, 1f, 1.5f, 2f, 3f, 4f};
-    private static final int VELOCIDADE_PADRAO = 2;
-
-    private final Ativos ativos;
-    private final SpriteBatch lote;
-    private final ShapeRenderer formas;
-    private final Viewport viewport;
-    private final OrthographicCamera camera;
-
-    private final PainelTabuleiro painelTabuleiro;
-    private final PainelStatus painelStatus;
-    private final PainelRegistro painelRegistro;
-    private final PainelRodape painelRodape;
-    private final BarraSuperior barraSuperior;
-    private final CamadaResultado camadaResultado;
-    private final Efeitos efeitos = new Efeitos();
-
-    private final Random sorteador = new Random();
-    private Partida partida = new Partida();
-
+    private SpriteBatch lote;
+    private ShapeRenderer formas;
+    private BitmapFont fonte;
+    private Partida partida;
+    private Mundo mapaInicial;
     private float tempo;
-    private float relogioDoPasso;
-    private float tempoDesdeOPasso = 999f;
-    private int indiceDaVelocidade = VELOCIDADE_PADRAO;
-    private EstadoDoJogo estado = EstadoDoJogo.PARADO;
-    private boolean mostrarMapaDeRisco = true;
+    private float scrollY = 0f;
 
-    /** Partículas de poeira que dão profundidade ao fundo. */
-    private final float[] poeiraX = new float[46];
-    private final float[] poeiraY = new float[46];
-    private final float[] poeiraRaio = new float[46];
-    private final float[] poeiraVelocidade = new float[46];
-    private final float[] poeiraAlfa = new float[46];
-
-    public TelaDaPartida(Ativos ativos, SpriteBatch lote, ShapeRenderer formas) {
-        this.ativos = ativos;
-        this.lote = lote;
-        this.formas = formas;
-
-        camera = new OrthographicCamera();
-        viewport = new FitViewport(LARGURA_VIRTUAL, ALTURA_VIRTUAL, camera);
-
-        painelTabuleiro = new PainelTabuleiro(ativos);
-        painelStatus = new PainelStatus(ativos);
-        painelRegistro = new PainelRegistro(ativos);
-        painelRodape = new PainelRodape(ativos);
-        barraSuperior = new BarraSuperior(ativos);
-        camadaResultado = new CamadaResultado(ativos);
-
-        lote.setBlendFunctionSeparate(
-                GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
-                GL20.GL_ONE, GL20.GL_ONE_MINUS_SRC_ALPHA);
-
-        prepararLayout();
-        prepararPoeira();
-        Gdx.input.setInputProcessor(criarControles());
-    }
-
-    // -----------------------------------------------------------------------
-    //  Layout
-    // -----------------------------------------------------------------------
-
-    /**
-     * Divide a resolução virtual entre os cinco blocos da interface:
-     * cabeçalho, tabuleiro, informações, registro e rodapé.
-     */
-    private void prepararLayout() {
-        float larguraUtil = LARGURA_VIRTUAL - MARGEM * 2f;
-
-        Area barra = new Area(MARGEM, ALTURA_VIRTUAL - MARGEM - ALTURA_DA_BARRA,
-                larguraUtil, ALTURA_DA_BARRA);
-        Area rodape = new Area(MARGEM, MARGEM, larguraUtil, ALTURA_DO_RODAPE);
-
-        float baseDoMeio = rodape.topo() + ESPACO;
-        float alturaDoMeio = barra.y() - ESPACO - baseDoMeio;
-
-        Area tabuleiro = new Area(MARGEM, baseDoMeio,
-                LARGURA_DO_TABULEIRO, alturaDoMeio);
-
-        float xDaLateral = tabuleiro.direita() + ESPACO;
-        float larguraDaLateral = LARGURA_VIRTUAL - MARGEM - xDaLateral;
-        float alturaDoStatus = 310f;
-
-        Area status = new Area(xDaLateral,
-                baseDoMeio + alturaDoMeio - alturaDoStatus,
-                larguraDaLateral, alturaDoStatus);
-        Area registro = new Area(xDaLateral, baseDoMeio,
-                larguraDaLateral, alturaDoMeio - alturaDoStatus - ESPACO);
-
-        barraSuperior.definirArea(barra);
-        painelTabuleiro.definirArea(tabuleiro);
-        painelStatus.definirArea(status);
-        painelRegistro.definirArea(registro);
-        painelRodape.definirArea(rodape);
-
-        float alturaDoCartao = 300f;
-        Area cartao = new Area(xDaLateral + 8f,
-                baseDoMeio + (alturaDoMeio - alturaDoCartao) / 2f,
-                larguraDaLateral - 16f, alturaDoCartao);
-        camadaResultado.definirArea(cartao, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
-    }
-
-    private void prepararPoeira() {
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
-            poeiraY[indice] = MathUtils.random(0f, ALTURA_VIRTUAL);
-            poeiraRaio[indice] = MathUtils.random(0.8f, 2.4f);
-            poeiraVelocidade[indice] = MathUtils.random(3f, 14f);
-            poeiraAlfa[indice] = MathUtils.random(0.05f, 0.18f);
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    //  Controles de teclado (recurso extra; a simulação anda sozinha)
-    // -----------------------------------------------------------------------
-
-    private InputAdapter criarControles() {
-        return new InputAdapter() {
-            @Override
-            public boolean keyDown(int tecla) {
-                switch (tecla) {
-                    case Input.Keys.SPACE -> alternarPausa();
-                    case Input.Keys.ENTER, Input.Keys.NUMPAD_ENTER -> {
-                        if (estado == EstadoDoJogo.JOGANDO
-                                || estado == EstadoDoJogo.PAUSADO) {
-                            estado = EstadoDoJogo.PAUSADO;
-                            executarPasso();
-                        }
-                    }
-                    case Input.Keys.PLUS, Input.Keys.EQUALS,
-                            Input.Keys.NUMPAD_ADD -> indiceDaVelocidade =
-                            Math.min(VELOCIDADES.length - 1, indiceDaVelocidade + 1);
-                    case Input.Keys.MINUS, Input.Keys.NUMPAD_SUBTRACT ->
-                            indiceDaVelocidade = Math.max(0, indiceDaVelocidade - 1);
-                    case Input.Keys.R -> reiniciar();
-                    case Input.Keys.H -> mostrarMapaDeRisco = !mostrarMapaDeRisco;
-                    case Input.Keys.ESCAPE -> Gdx.app.exit();
-                    default -> {
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            @Override
-            public boolean touchDown(int x, int y, int ponteiro, int botao) {
-                Vector2 ponto = viewport.unproject(new Vector2(x, y));
-                switch (barraSuperior.acaoNoPonto(ponto.x, ponto.y, estado)) {
-                    case JOGAR -> estado = EstadoDoJogo.JOGANDO;
-                    case PAUSAR -> alternarPausa();
-                    case REINICIAR -> reiniciar();
-                    case NENHUMA -> {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        };
-    }
-
-    private void alternarPausa() {
-        if (estado == EstadoDoJogo.JOGANDO) {
-            estado = EstadoDoJogo.PAUSADO;
-        } else if (estado == EstadoDoJogo.PAUSADO) {
-            estado = EstadoDoJogo.JOGANDO;
-        }
-    }
-
-    /** Sorteia uma nova fase e aguarda o início pelo botão Jogar. */
-    private void reiniciar() {
-        partida = Partida.comFaseSorteada(sorteador);
-
-        relogioDoPasso = 0f;
-        tempoDesdeOPasso = 999f;
-        estado = EstadoDoJogo.PARADO;
-        efeitos.limpar();
-        camadaResultado.reiniciar();
-        prepararLayout();
-    }
-
-    // -----------------------------------------------------------------------
-    //  Ciclo de atualização e desenho
-    // -----------------------------------------------------------------------
+    private static final float BOTAO_X = 670f;
+    private static final float BOTAO_Y = 20f;
+    private static final float BOTAO_LARGURA = 230f;
+    private static final float BOTAO_ALTURA = 50f;
 
     @Override
-    public void render(float delta) {
-        float passoDeTempo = Math.min(delta, 1f / 20f);
-        atualizar(passoDeTempo);
-        desenhar();
-    }
+    public void create() {
+        this.lote = new SpriteBatch();
+        this.formas = new ShapeRenderer();
+        this.fonte = new BitmapFont();
+        this.fonte.getData().setScale(1.3f);
+        this.partida = new Partida();
+        this.mapaInicial = partida.getMundo().reiniciar();
 
-    private void atualizar(float delta) {
-        tempo += delta;
-        tempoDesdeOPasso += delta;
-        efeitos.atualizar(delta);
-        atualizarPoeira(delta);
-
-        camadaResultado.atualizar(delta, estado == EstadoDoJogo.FIM);
-
-        if (estado == EstadoDoJogo.JOGANDO) {
-            relogioDoPasso += delta;
-            if (relogioDoPasso >= intervaloAtual()) {
-                relogioDoPasso = 0f;
-                executarPasso();
+        Gdx.input.setInputProcessor(new com.badlogic.gdx.InputAdapter() {
+            @Override
+            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                if (partida.getSituacao().encerrada()) {
+                    float drawY = 700 - screenY;
+                    if (screenX >= BOTAO_X && screenX <= BOTAO_X + BOTAO_LARGURA
+                            && drawY >= BOTAO_Y && drawY <= BOTAO_Y + BOTAO_ALTURA) {
+                        partida = new Partida();
+                        mapaInicial = partida.getMundo().reiniciar();
+                        tempo = 0f;
+                        scrollY = 0f;
+                        return true;
+                    }
+                }
+                return false;
             }
-        }
 
-        painelRegistro.atualizar(partida.getRegistro());
-    }
-
-    private void atualizarPoeira(float delta) {
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            poeiraY[indice] += poeiraVelocidade[indice] * delta;
-            if (poeiraY[indice] > ALTURA_VIRTUAL) {
-                poeiraY[indice] = -4f;
-                poeiraX[indice] = MathUtils.random(0f, LARGURA_VIRTUAL);
+            @Override
+            public boolean scrolled(float amountX, float amountY) {
+                scrollY += amountY * 40f;
+                if (scrollY < 0) {
+                    scrollY = 0;
+                }
+                return true;
             }
-        }
+        });
     }
 
-    private float intervaloAtual() {
-        return INTERVALO_BASE / VELOCIDADES[indiceDaVelocidade];
-    }
-
-    private float duracaoDoDisparo() {
-        return partida.getUltimoDisparo() == null
-                ? 0f : Math.min(0.40f, intervaloAtual() * 0.50f);
-    }
-
-    private float duracaoDoMovimento() {
-        return Math.min(0.30f, intervaloAtual() * 0.45f);
-    }
-
-    private void executarPasso() {
-        if (!partida.executarPasso()) {
-            return;
-        }
-        tempoDesdeOPasso = 0f;
-        reagirAoPasso();
-        if (partida.getSituacao().encerrada()) {
-            estado = EstadoDoJogo.FIM;
-        }
-    }
-
-    /** Traduz os acontecimentos do passo em efeitos visuais. */
-    private void reagirAoPasso() {
-        Posicao destino = partida.getDestinoDoPasso();
-        float centroX = painelTabuleiro.centroX(destino.coluna());
-        float centroY = painelTabuleiro.centroY(destino.linha());
-        float lado = painelTabuleiro.getLado();
-
-        for (EventoJogo evento : partida.getEventosDoUltimoPasso()) {
-            if (evento.tipo() == TipoEvento.TESOURO) {
-                efeitos.clarao(Paleta.OURO, 0.22f);
-                efeitos.onda(centroX, centroY, lado * 1.5f, Paleta.OURO, 0.9f);
-                efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_OURO,
-                        centroX, centroY + lado * 0.4f, Paleta.OURO);
-            }
-        }
-
-        DisparoDeFlecha disparo = partida.getUltimoDisparo();
-        if (disparo != null && disparo.acertou()) {
-            float alvoX = painelTabuleiro.centroX(disparo.destino().coluna());
-            float alvoY = painelTabuleiro.centroY(disparo.destino().linha());
-            efeitos.tremer(4.5f);
-            efeitos.onda(alvoX, alvoY, lado * 1.3f, Paleta.ALERTA, 0.7f);
-            efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_WUMPUS,
-                    alvoX, alvoY + lado * 0.4f, Paleta.ALERTA);
-        }
-
-        switch (partida.getSituacao()) {
-            case MORTE -> {
-                efeitos.tremer(11f);
-                efeitos.clarao(Paleta.PERIGO, 0.45f);
-                efeitos.onda(centroX, centroY, lado * 2.0f, Paleta.PERIGO, 1.1f);
-                efeitos.textoFlutuante(
-                        String.valueOf(AgenteInteligente.PENALIDADE_MORTE),
-                        centroX, centroY + lado * 0.4f, Paleta.PERIGO);
-            }
-            case VITORIA -> {
-                efeitos.clarao(Paleta.SUCESSO, 0.32f);
-                efeitos.onda(centroX, centroY, lado * 2.2f, Paleta.SUCESSO, 1.2f);
-                efeitos.textoFlutuante("+" + AgenteInteligente.BONUS_VITORIA,
-                        centroX, centroY + lado * 0.4f, Paleta.SUCESSO);
-            }
-            default -> {
-                // Passo comum: nenhum efeito especial.
-            }
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    //  Desenho
-    // -----------------------------------------------------------------------
-
-    private void desenhar() {
-        EstadoDaAnimacao animacao = montarEstadoDaAnimacao();
-
-        Gdx.gl.glClearColor(Paleta.FUNDO_BAIXO.r, Paleta.FUNDO_BAIXO.g,
-                Paleta.FUNDO_BAIXO.b, 1f);
+    @Override
+    public void render() {
+        float delta = Gdx.graphics.getDeltaTime();
+        Gdx.gl.glClearColor(0.18f, 0.18f, 0.18f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        viewport.apply();
+        if (!partida.getSituacao().encerrada()) {
+            tempo += delta;
+            // Acumula tempo entre quadros sem bloquear os eventos da janela.
+            if (tempo >= 0.5f) {
+                partida.executarPasso();
+                tempo = 0f;
+            }
+        }
 
-        // Passagem 1: todas as formas, com o tremor aplicado à câmera.
-        habilitarMistura();
-        posicionarCamera(efeitos.getDeslocamentoX(), efeitos.getDeslocamentoY());
-        formas.setProjectionMatrix(camera.combined);
+        // --- Renderização de Formas (ShapeRenderer) ---
         formas.begin(ShapeRenderer.ShapeType.Filled);
+        desenharGradeEElementos();
+        desenharLegenda();
 
-        desenharFundo();
-        barraSuperior.desenharFormas(formas, estado);
-        painelTabuleiro.desenharFormas(formas, partida, animacao);
-        painelStatus.desenharFormas(formas, partida, animacao);
-        painelRegistro.desenharFormas(formas);
-        painelRodape.desenharFormas(formas, tempo);
-        efeitos.desenharOndas(formas);
-
+        // Botão de reinício se a partida terminou (estilo limpo com borda)
+        if (partida.getSituacao().encerrada()) {
+            formas.setColor(0.15f, 0.55f, 0.25f, 1f);
+            formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
+        }
         formas.end();
 
-        // Passagem 2: todos os textos.
-        lote.setProjectionMatrix(camera.combined);
+        if (partida.getSituacao().encerrada()) {
+            formas.begin(ShapeRenderer.ShapeType.Line);
+            formas.setColor(0.35f, 0.85f, 0.45f, 1f);
+            formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
+            formas.end();
+        }
+
+        // --- Renderização de Textos (SpriteBatch) ---
         lote.begin();
 
-        barraSuperior.desenharTextos(lote, estado);
-        painelTabuleiro.desenharTextos(lote, partida, animacao);
-        painelStatus.desenharTextos(lote, partida);
-        painelRegistro.desenharTextos(lote, partida.getRegistro().size());
-        painelRodape.desenharTextos(lote);
-        efeitos.desenharTextos(lote, ativos.fonteValor);
+        // HUD - Painel Superior Esquerdo
+        Posicao posAgente = partida.getAgente().getPosicao();
+        fonte.getData().setScale(1.2f);
+        fonte.draw(lote, "Situação: " + partida.getSituacao().getTitulo(), 50, 680);
+        fonte.draw(lote, "Posição Atual: " + posAgente + " | Movimentos: " + partida.getAgente().getQuantidadeDeMovimentos() + " | Pontos: " + partida.getAgente().getPontuacao(), 50, 650);
+
+        String inventario = "Ouro: " + (partida.getAgente().possuiOuro() ? "Sim" : "Não")
+                + " | Flecha: " + (partida.getAgente().possuiFlecha() ? "Sim" : "Não");
+        fonte.draw(lote, inventario, 50, 620);
+
+        if (partida.getAgente().estaVivo()) {
+            String percepcoesStr = partida.getPercepcoesAtuais().descricao();
+            if (percepcoesStr.isEmpty()) {
+                percepcoesStr = "Nenhuma";
+            }
+            fonte.draw(lote, "Percepções: " + percepcoesStr, 50, 590);
+        }
+
+        // Desenhar Rótulos dos Eixos (Apenas 0 a 4)
+        fonte.getData().setScale(1.1f);
+        int tamanho = Mundo.TAMANHO;
+        float lado = 100f;
+        float margemX = 50f;
+        float margemY = 50f;
+
+        // Números das colunas (0 a 4 na parte inferior da grade)
+        for (int c = 0; c < tamanho; c++) {
+            float cx = margemX + c * lado + lado / 2 - 5;
+            fonte.draw(lote, String.valueOf(c), cx, margemY - 12);
+        }
+        // Números das linhas (0 a 4 na lateral esquerda da grade)
+        for (int l = 0; l < tamanho; l++) {
+            float ly = margemY + (tamanho - 1 - l) * lado + lado / 2 + 7;
+            fonte.draw(lote, String.valueOf(l), margemX - 25, ly);
+        }
+
+        // Legenda - Textos
+        desenharTextosDaLegenda();
+
+        // Resultado permanece visível fora da grade e do histórico rolável.
+        if (partida.getSituacao().encerrada()) {
+            fonte.getData().setScale(1.1f);
+            GlyphLayout resultado = new GlyphLayout(fonte,
+                    partida.getDescricaoResultado(), Color.WHITE, 370, -1, true);
+            fonte.draw(lote, resultado, 600, 495);
+        }
+
+        // Texto do Botão "JOGAR NOVAMENTE" centralizado
+        if (partida.getSituacao().encerrada()) {
+            fonte.getData().setScale(1.15f);
+            GlyphLayout layoutBotao = new GlyphLayout(fonte, "JOGAR NOVAMENTE");
+            float tx = BOTAO_X + (BOTAO_LARGURA - layoutBotao.width) / 2f;
+            float ty = BOTAO_Y + (BOTAO_ALTURA + layoutBotao.height) / 2f;
+            fonte.draw(lote, layoutBotao, tx, ty);
+        }
+
+        // Painel do Histórico (Lado Direito)
+        fonte.getData().setScale(1.1f);
+        fonte.draw(lote, "HISTÓRICO DE EVENTOS:", 600, 530);
+        java.util.List<String> registro = partida.getRegistro();
+
+        GlyphLayout layout = new GlyphLayout();
+        float currentY = (partida.getSituacao().encerrada() ? 90 : 30) - scrollY;
+        for (int i = registro.size() - 1; i >= 0; i--) {
+            String texto = registro.get(i);
+            layout.setText(fonte, texto, Color.WHITE, 370, -1, true);
+
+            float drawY = currentY + layout.height;
+            if (drawY > (partida.getSituacao().encerrada() ? 410 : 500)) {
+                break;
+            }
+
+            if (currentY >= (partida.getSituacao().encerrada() ? 85 : 0)) {
+                fonte.draw(lote, layout, 600, drawY);
+            }
+
+            currentY += (layout.height + 10);
+        }
 
         lote.end();
-
-        // Passagem 3: clarão e cartão de encerramento, já sem tremor.
-        habilitarMistura();
-        posicionarCamera(0f, 0f);
-        formas.setProjectionMatrix(camera.combined);
-        formas.begin(ShapeRenderer.ShapeType.Filled);
-        efeitos.desenharClarao(formas, LARGURA_VIRTUAL, ALTURA_VIRTUAL);
-        camadaResultado.desenharFormas(formas, partida, tempo);
-        formas.end();
-
-        if (camadaResultado.estaVisivel()) {
-            lote.setProjectionMatrix(camera.combined);
-            lote.begin();
-            camadaResultado.desenharTextos(lote, partida);
-            lote.end();
-        }
     }
 
-    private EstadoDaAnimacao montarEstadoDaAnimacao() {
-        float duracaoDoDisparo = duracaoDoDisparo();
-        float progressoDoDisparo = duracaoDoDisparo <= 0f ? 1f
-                : MathUtils.clamp(tempoDesdeOPasso / duracaoDoDisparo, 0f, 1f);
-        float progressoDoPasso = MathUtils.clamp(
-                (tempoDesdeOPasso - duracaoDoDisparo) / duracaoDoMovimento(),
-                0f, 1f);
+    private void desenharGradeEElementos() {
+        int tamanho = Mundo.TAMANHO;
+        float lado = 100f;
+        float margemX = 50f;
+        float margemY = 50f;
 
-        return new EstadoDaAnimacao(tempo, progressoDoPasso, progressoDoDisparo,
-                mostrarMapaDeRisco);
-    }
+        for (int l = 0; l < tamanho; l++) {
+            for (int c = 0; c < tamanho; c++) {
+                float x = margemX + c * lado;
+                float y = margemY + (tamanho - 1 - l) * lado;
 
-    /**
-     * Liga a mistura de transparência com a função padrão de composição.
-     *
-     * <p>É preciso repetir isso antes de cada passagem do {@link ShapeRenderer}:
-     * o {@code SpriteBatch} desliga o {@code GL_BLEND} ao terminar, e sem ele
-     * todas as cores translúcidas seriam escritas como se fossem opacas.</p>
-     */
-    private void habilitarMistura() {
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        // Cor: composição normal. Alfa: a função separada mantém o quadro
-        // opaco, o que evita véus translúcidos "furarem" a imagem final.
-        Gdx.gl.glBlendFuncSeparate(
-                GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
-                GL20.GL_ONE, GL20.GL_ONE_MINUS_SRC_ALPHA);
-    }
+                boolean conhecida = partida.getMundo().foiVisitada(l, c) || partida.mapaDeveSerRevelado();
 
-    private void posicionarCamera(float deslocamentoX, float deslocamentoY) {
-        camera.position.set(LARGURA_VIRTUAL / 2f + deslocamentoX,
-                ALTURA_VIRTUAL / 2f + deslocamentoY, 0f);
-        camera.update();
-    }
+                if (conhecida) {
+                    formas.setColor(0.75f, 0.75f, 0.75f, 1);
+                } else {
+                    formas.setColor(0.3f, 0.3f, 0.3f, 1);
+                }
+                formas.rect(x + 2, y + 2, lado - 4, lado - 4);
 
-    /** Degradê da caverna, poeira em suspensão e vinheta nas bordas. */
-    private void desenharFundo() {
-        Desenho.degradeVertical(formas, 0f, 0f, LARGURA_VIRTUAL, ALTURA_VIRTUAL,
-                Paleta.FUNDO_BAIXO, Paleta.FUNDO_ALTO);
+                if (conhecida) {
+                    // A cópia inicial serve apenas à revelação; não interfere na simulação.
+                    char elem = partida.mapaDeveSerRevelado()
+                            ? mapaInicial.getElemento(l, c)
+                            : partida.getMundo().getElemento(l, c);
+                    float cx = x + lado / 2;
+                    float cy = y + lado / 2;
 
-        for (int indice = 0; indice < poeiraX.length; indice++) {
-            formas.setColor(Paleta.comAlfa(Paleta.AGENTE_BRILHO,
-                    poeiraAlfa[indice]));
-            formas.circle(poeiraX[indice], poeiraY[indice],
-                    poeiraRaio[indice], 10);
+                    if (elem == Mundo.POCO) {
+                        formas.setColor(Color.BLACK);
+                        formas.circle(cx, cy, 28);
+                    } else if (elem == Mundo.WUMPUS) {
+                        formas.setColor(Color.RED);
+                        formas.circle(cx, cy, 28);
+                    } else if (elem == Mundo.OURO) {
+                        formas.setColor(Color.YELLOW);
+                        formas.rect(cx - 20, cy - 20, 40, 40);
+                    } else if (elem == Mundo.FLECHA) {
+                        formas.setColor(Color.GREEN);
+                        formas.rect(cx - 5, cy - 20, 10, 40);
+                    }
+                }
+            }
         }
 
-        Color opaco = new Color(0f, 0f, 0f, 0.55f);
-        Color transparente = new Color(0f, 0f, 0f, 0f);
-        float faixa = 130f;
-        formas.rect(0f, 0f, LARGURA_VIRTUAL, faixa,
-                opaco, opaco, transparente, transparente);
-        formas.rect(0f, ALTURA_VIRTUAL - faixa, LARGURA_VIRTUAL, faixa,
-                transparente, transparente, opaco, opaco);
-        formas.rect(0f, 0f, faixa, ALTURA_VIRTUAL,
-                opaco, transparente, transparente, opaco);
-        formas.rect(LARGURA_VIRTUAL - faixa, 0f, faixa, ALTURA_VIRTUAL,
-                transparente, opaco, opaco, transparente);
+        Posicao pos = partida.getAgente().getPosicao();
+        float ax = margemX + pos.coluna() * lado + lado / 2;
+        float ay = margemY + (tamanho - 1 - pos.linha()) * lado + lado / 2;
+        formas.setColor(Color.BLUE);
+        formas.circle(ax, ay, 20);
+    }
+
+    private void desenharLegenda() {
+        float baseX = 600f;
+        float baseY = 560f;
+
+        // Fundo do painel de legenda
+        formas.setColor(0.25f, 0.25f, 0.25f, 1);
+        formas.rect(baseX, baseY, 370, 120);
+
+        // Agente (Círculo Azul)
+        formas.setColor(Color.BLUE);
+        formas.circle(baseX + 25, baseY + 95, 10);
+
+        // Poço (Círculo Preto)
+        formas.setColor(Color.BLACK);
+        formas.circle(baseX + 25, baseY + 60, 10);
+
+        // Wumpus (Círculo Vermelho)
+        formas.setColor(Color.RED);
+        formas.circle(baseX + 25, baseY + 25, 10);
+
+        // Ouro (Quadrado Amarelo)
+        formas.setColor(Color.YELLOW);
+        formas.rect(baseX + 195, baseY + 85, 18, 18);
+
+        // Flecha (Retângulo Verde)
+        formas.setColor(Color.GREEN);
+        formas.rect(baseX + 200, baseY + 50, 8, 20);
+    }
+
+    private void desenharTextosDaLegenda() {
+        float baseX = 600f;
+        float baseY = 560f;
+
+        fonte.getData().setScale(1.0f);
+        fonte.draw(lote, "Agente", baseX + 45, baseY + 100);
+        fonte.draw(lote, "Poço", baseX + 45, baseY + 65);
+        fonte.draw(lote, "Wumpus", baseX + 45, baseY + 30);
+
+        fonte.draw(lote, "Ouro", baseX + 225, baseY + 100);
+        fonte.draw(lote, "Flecha", baseX + 225, baseY + 65);
     }
 
     @Override
-    public void resize(int largura, int altura) {
-        viewport.update(largura, altura, true);
-    }
-
-    @Override
-    public void hide() {
-        Gdx.input.setInputProcessor(null);
-    }
-
-    /** Situação atual, exposta para testes e para a barra de título da janela. */
-    public Situacao getSituacao() {
-        return partida.getSituacao();
+    public void dispose() {
+        fonte.dispose();
+        lote.dispose();
+        formas.dispose();
     }
 }
+
