@@ -17,17 +17,17 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import java.util.List;
-import java.util.EnumMap;
-import java.util.Map;
 import wumpusworld.aplicacao.ControladorJogo;
 import wumpusworld.aplicacao.EstadoPartida;
 import wumpusworld.aplicacao.Partida;
 import wumpusworld.dominio.AgenteInteligente;
 import wumpusworld.dominio.Mundo;
-import wumpusworld.dominio.Direcao;
 
-/** Compõe a tela com Scene2D; ações do usuário são delegadas ao controlador. */
+/** Compõe a tela com Scene2D; o controlador faz o agente avançar e a tela apenas exibe o estado. */
 public final class TelaPartida extends ScreenAdapter {
+    /** Evita saltos após travamentos ou janela em segundo plano. */
+    private static final float LIMITE_DO_QUADRO = 0.1f;
+
     private final ControladorJogo controlador = new ControladorJogo();
     private final Tema tema = new Tema();
     private final Stage stage = new Stage(new FitViewport(1240, 820));
@@ -38,21 +38,19 @@ public final class TelaPartida extends ScreenAdapter {
     private final Label inventario = texto("", "normal", Tema.TEXTO);
     private final Label percepcoes = texto("", "normal", Tema.TEXTO);
     private final Label decisao = texto("", "pequena", Tema.SUAVE);
+    private final Label posicao = texto("", "normal", Tema.TEXTO);
     private final Label objetivo = texto("", "normal", Tema.TEXTO);
     private final Label visibilidade = texto("", "pequena", Tema.SUAVE);
     private final Table registros = new Table();
-    private final Map<Direcao, TextButton> direcoes = new EnumMap<>(Direcao.class);
-    private final TextButton disparar;
+    private final TextButton pausar;
+    private final TextButton velocidade;
     private final TextButton revelar;
     private int quantidadeRegistros = -1;
     private boolean mapaRevelado;
 
     public TelaPartida() {
-        direcoes.put(Direcao.CIMA, botao("↑ Cima", "default", () -> controlador.escolherDirecao(Direcao.CIMA)));
-        direcoes.put(Direcao.BAIXO, botao("↓ Baixo", "default", () -> controlador.escolherDirecao(Direcao.BAIXO)));
-        direcoes.put(Direcao.ESQUERDA, botao("← Esquerda", "default", () -> controlador.escolherDirecao(Direcao.ESQUERDA)));
-        direcoes.put(Direcao.DIREITA, botao("→ Direita", "default", () -> controlador.escolherDirecao(Direcao.DIREITA)));
-        disparar = botao("Preparar flecha", "principal", controlador::alternarDisparo);
+        pausar = botao("Pausar", "principal", controlador::alternarPausa);
+        velocidade = botao("", "default", controlador::alternarVelocidade);
         revelar = botao("Revelar mapa", "default", this::alternarMapa);
         construirLayout();
         atualizarPainel();
@@ -67,7 +65,7 @@ public final class TelaPartida extends ScreenAdapter {
         Table cabecalho = new Table();
         Table titulo = new Table();
         titulo.add(texto("WUMPUS WORLD", "titulo", Tema.TEXTO)).left().row();
-        titulo.add(texto("EXPEDIÇÃO MANUAL  /  VOCÊ ESCOLHE O PRÓXIMO PASSO",
+        titulo.add(texto("AGENTE AUTÔNOMO  /  ACOMPANHE CADA DECISÃO",
                 "pequena", Tema.SUAVE)).left().padTop(7);
         cabecalho.add(titulo).expandX().left();
         cabecalho.add(estado).right();
@@ -83,6 +81,7 @@ public final class TelaPartida extends ScreenAdapter {
         mapa.add(tabuleiro).grow().row();
         Table legenda = new Table();
         legenda.add(texto("● Agente", "pequena", Tema.VERDE)).padRight(18);
+        legenda.add(texto("▲ Base", "pequena", Tema.SUAVE)).padRight(18);
         legenda.add(texto("◆ Ouro", "pequena", Tema.OURO)).padRight(18);
         legenda.add(texto("W Wumpus", "pequena", Tema.PERIGO)).padRight(18);
         legenda.add(texto("○ Poço", "pequena", Tema.SUAVE));
@@ -96,7 +95,8 @@ public final class TelaPartida extends ScreenAdapter {
         telemetria.add(texto("MOVIMENTOS", "pequena", Tema.SUAVE)).left().expandX().row();
         telemetria.add(pontuacao).left().padTop(5);
         telemetria.add(movimentos).left().padTop(5).row();
-        telemetria.add(inventario).left().colspan(2).padTop(14);
+        telemetria.add(posicao).left().colspan(2).padTop(14).row();
+        telemetria.add(inventario).left().colspan(2).padTop(8);
         lateral.add(telemetria).growX().padBottom(12).row();
 
         Table sensores = painel();
@@ -122,15 +122,13 @@ public final class TelaPartida extends ScreenAdapter {
 
         Table controles = new Table();
         controles.defaults().height(46).padRight(10);
-        for (Direcao direcao : Direcao.values()) {
-            controles.add(direcoes.get(direcao)).width(118);
-        }
-        controles.add(disparar).width(176);
+        controles.add(pausar).width(148);
+        controles.add(velocidade).width(196);
         controles.add(botao("Nova partida", "default", this::reiniciar)).width(148);
         controles.add().expandX();
         controles.add(revelar).width(166).padRight(0);
         raiz.add(controles).growX().padTop(16).row();
-        raiz.add(texto("SETAS / WASD  mover     F  preparar flecha + direção     ESC  cancelar mira     R  nova partida     V  revelar mapa",
+        raiz.add(texto("ESPAÇO  pausar / continuar     R  nova partida     V  revelar mapa",
                 "pequena", Tema.SUAVE)).left().padTop(14);
     }
 
@@ -175,11 +173,12 @@ public final class TelaPartida extends ScreenAdapter {
         Mundo mundo = partida.getMundo();
         EstadoPartida fase = partida.getEstado();
         boolean terminou = fase.terminou();
-        estado.setText(terminou ? fase.getTitulo()
-                : controlador.estaPreparandoDisparo() ? "Escolha a direção da flecha" : "Sua vez  /  " + fase.getTitulo());
+        estado.setText(terminou || !controlador.estaPausado() ? fase.getTitulo()
+                : "Pausado  /  " + fase.getTitulo());
         estado.setColor(fase == EstadoPartida.MORTE ? Tema.PERIGO : Tema.VERDE);
         pontuacao.setText(Integer.toString(agente.getPontuacao()));
         movimentos.setText(agente.getQuantidadeDeMovimentos() + " / 180");
+        posicao.setText("Posição: [" + agente.getLinha() + ", " + agente.getColuna() + "]");
         inventario.setText("Ouro: " + (agente.possuiOuro() ? "coletado" : "a encontrar")
                 + "   •   Flecha: " + (agente.possuiFlecha() ? "1" : "0"));
         boolean brisa = mundo.temBrisa(agente.getLinha(), agente.getColuna());
@@ -188,19 +187,16 @@ public final class TelaPartida extends ScreenAdapter {
                 : (brisa ? "BRISA" : "Sem brisa") + "   /   " + (fedor ? "FEDOR" : "Sem fedor"));
         percepcoes.setColor(agente.estaVivo() && (brisa || fedor) ? Tema.OURO : Tema.VERDE);
         objetivo.setText(switch (fase) {
-            case EXPLORANDO -> "Use as setas ou WASD para explorar e encontrar o ouro.";
-            case RETORNANDO -> "Ouro coletado! Escolha o caminho de volta à base [0, 0].";
+            case EXPLORANDO -> "O agente explora o mapa em busca do ouro.";
+            case RETORNANDO -> "Ouro coletado! O agente volta à base [0, 0].";
             case VITORIA -> "Ouro entregue! A expedição foi concluída. Vitória: +200 pontos.";
-            case MORTE -> "A expedição terminou em um perigo. Inicie uma nova partida para tentar novamente.";
+            case MORTE -> "O agente morreu. Inicie uma nova partida para tentar novamente.";
             case LIMITE_ATINGIDO -> "Os 180 movimentos de exploração acabaram antes de encontrar o ouro.";
         });
-        if (controlador.estaPreparandoDisparo()) {
-            objetivo.setText("Mira ativa: escolha uma direção para disparar. F ou Esc cancela.");
-        }
         decisao.setText(partida.getUltimaDecisao());
-        direcoes.values().forEach(botao -> botao.setDisabled(terminou));
-        disparar.setDisabled(terminou || !agente.possuiFlecha());
-        disparar.setText(controlador.estaPreparandoDisparo() ? "Cancelar mira" : "Preparar flecha");
+        pausar.setDisabled(terminou);
+        pausar.setText(controlador.estaPausado() ? "Continuar" : "Pausar");
+        velocidade.setText("Velocidade: " + controlador.getVelocidade().getTitulo());
         revelar.setDisabled(terminou);
         revelar.setText(mapaRevelado ? "Ocultar mapa" : "Revelar mapa");
         visibilidade.setText(terminou ? "Mapa completo  •  expedição encerrada"
@@ -225,12 +221,7 @@ public final class TelaPartida extends ScreenAdapter {
             @Override
             public boolean keyDown(int keycode) {
                 switch (keycode) {
-                    case Input.Keys.UP, Input.Keys.W -> controlador.escolherDirecao(Direcao.CIMA);
-                    case Input.Keys.DOWN, Input.Keys.S -> controlador.escolherDirecao(Direcao.BAIXO);
-                    case Input.Keys.LEFT, Input.Keys.A -> controlador.escolherDirecao(Direcao.ESQUERDA);
-                    case Input.Keys.RIGHT, Input.Keys.D -> controlador.escolherDirecao(Direcao.DIREITA);
-                    case Input.Keys.F -> controlador.alternarDisparo();
-                    case Input.Keys.ESCAPE -> controlador.cancelarDisparo();
+                    case Input.Keys.SPACE -> controlador.alternarPausa();
                     case Input.Keys.R -> reiniciar();
                     case Input.Keys.V -> alternarMapa();
                     default -> { return false; }
@@ -242,10 +233,12 @@ public final class TelaPartida extends ScreenAdapter {
 
     @Override
     public void render(float delta) {
+        float passo = Math.min(delta, LIMITE_DO_QUADRO);
+        controlador.atualizar(passo);
         atualizarPainel();
         ScreenUtils.clear(Tema.FUNDO);
         stage.getViewport().apply();
-        stage.act(Math.min(delta, 0.1f));
+        stage.act(passo);
         stage.draw();
     }
 
@@ -253,9 +246,6 @@ public final class TelaPartida extends ScreenAdapter {
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
     }
-
-    @Override
-    public void pause() { controlador.cancelarDisparo(); }
 
     @Override
     public void hide() { Gdx.input.setInputProcessor(null); }

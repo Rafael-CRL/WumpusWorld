@@ -16,11 +16,19 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/** Verificação optativa com OpenGL real, cliques, atalhos e capturas da janela. */
+/** Verificação optativa com OpenGL real: movimento automático, cliques, atalhos e capturas. */
 public final class VerificacaoDesktop extends ApplicationAdapter {
+    private static final int QUADROS_SEM_MOVER = 90;
+    private static final int LIMITE_DE_QUADROS = 6000;
+    private static final Pattern MOVIMENTOS = Pattern.compile("(\\d+) / 180");
+
     private final WumpusGame jogo = new WumpusGame();
     private int frame;
+    private int movimentosAoPausar;
+    private int fimDaPartida;
     private Throwable falha;
 
     public static void main(String[] args) {
@@ -50,101 +58,84 @@ public final class VerificacaoDesktop extends ApplicationAdapter {
             frame++;
             switch (frame) {
                 case 15 -> {
-                    exigir(textos().contains("0 / 180"), "Estado inicial");
+                    exigir(movimentos() == 0, "Estado inicial");
+                    exigir(textos().contains("Posição: [0, 0]"), "Posição inicial exibida");
+                    exigir(botao("Pausar") != null, "Partida inicia em execução");
                     capturar("inicial");
                 }
-                case 60 -> {
-                    exigir(textos().contains("0 / 180"), "Esperar não move o jogador");
-                    clicar("↑ Cima");
+                case 120 -> {
+                    exigir(movimentos() > 0, "O agente se move sozinho, sem entrada do usuário");
+                    clicar("Pausar");
                 }
-                case 65 -> {
-                    exigir(textos().contains("0 / 180"), "Parede não consome movimento");
-                    clicar("↓ Baixo");
+                case 125 -> {
+                    exigir(botao("Continuar") != null, "Pausa ativada");
+                    movimentosAoPausar = movimentos();
                 }
-                case 70 -> {
-                    exigir(textos().contains("1 / 180"), "Movimento por clique");
-                    tecla(Input.Keys.D);
+                case 125 + QUADROS_SEM_MOVER -> {
+                    exigir(movimentos() == movimentosAoPausar, "Pausa congela o agente");
+                    clicar("Continuar");
                 }
-                case 75 -> {
-                    exigir(textos().contains("2 / 180"), "Movimento por WASD");
-                    clicar("Preparar flecha");
+                case 130 + QUADROS_SEM_MOVER -> {
+                    exigir(botao("Pausar") != null, "Movimento retomado");
+                    clicar("Velocidade: Normal");
                 }
-                case 80 -> {
-                    exigir(botao("Cancelar mira") != null, "Mira ativada");
-                    tecla(Input.Keys.ESCAPE);
-                }
-                case 85 -> {
-                    exigir(botao("Preparar flecha") != null, "Mira cancelada");
-                    tecla(Input.Keys.F);
-                }
-                case 90 -> clicar("→ Direita");
-                case 95 -> {
-                    exigir(textos().contains("2 / 180"), "Flecha não move o jogador");
-                    exigir(textos().contains("-12"), "Custo de disparo");
-                    exigir(botao("Preparar flecha").isDisabled(), "Flecha consumida");
-                    tecla(Input.Keys.R);
-                }
-                case 100 -> {
-                    exigir(textos().contains("0 / 180"), "Reinício por teclado");
+                case 135 + QUADROS_SEM_MOVER -> {
+                    exigir(botao("Velocidade: Rápida") != null, "Velocidade alterada");
                     clicar("Revelar mapa");
                 }
-                case 105 -> {
+                case 140 + QUADROS_SEM_MOVER -> {
                     exigir(botao("Ocultar mapa") != null, "Revelação visual");
                     capturar("revelado");
-                    tecla(Input.Keys.DOWN);
-                    tecla(Input.Keys.DOWN);
-                    tecla(Input.Keys.F);
-                    tecla(Input.Keys.RIGHT);
+                    clicar("Ocultar mapa");
                 }
-                case 110 -> {
-                    exigir(textos().contains("38"), "Flecha abate o Wumpus escolhido");
-                    tecla(Input.Keys.DOWN);
-                    tecla(Input.Keys.DOWN);
-                    for (int i = 0; i < 4; i++) tecla(Input.Keys.RIGHT);
+                default -> {
+                    if (frame > 140 + QUADROS_SEM_MOVER) aguardarFimDaPartida();
                 }
-                case 115 -> {
-                    exigir(textos().contains("8 / 180"), "Percurso manual até o ouro");
-                    exigir(textos().stream().anyMatch(t -> t.startsWith("Ouro: coletado")), "Coleta do ouro");
-                }
-                case 175 -> {
-                    exigir(textos().contains("8 / 180"), "Retorno não é automático");
-                    tecla(Input.Keys.UP);
-                }
-                case 180 -> {
-                    exigir(textos().contains("9 / 180"), "Jogador escolhe o retorno");
-                    tecla(Input.Keys.DOWN);
-                    for (int i = 0; i < 4; i++) tecla(Input.Keys.LEFT);
-                    for (int i = 0; i < 4; i++) tecla(Input.Keys.UP);
-                }
-                case 195 -> {
-                    exigir(botao("↑ Cima").isDisabled(), "Fim bloqueia os movimentos");
-                    exigir(textos().contains("Missão cumprida"), "Vitória manual");
-                    exigir(textos().contains("322"), "Pontuação final");
-                    capturar("fim");
-                    tecla(Input.Keys.RIGHT);
-                    tecla(Input.Keys.F);
-                }
-                case 200 -> {
-                    exigir(textos().contains("18 / 180"), "Fim impede turnos adicionais");
-                    clicar("Nova partida");
-                    Gdx.graphics.setWindowedMode(960, 640);
-                }
-                case 230 -> {
-                    exigir(textos().contains("0 / 180"), "Reinício por clique");
-                    capturar("janela-menor");
-                    clicar("→ Direita");
-                }
-                case 235 -> {
-                    exigir(textos().contains("1 / 180"), "Clique após redimensionamento");
-                    System.out.println("VERIFICAÇÃO DESKTOP OK: controle manual, mira, flecha, ouro, retorno, vitória e redimensionamento.");
-                    Gdx.app.exit();
-                }
-                default -> { }
             }
         } catch (Throwable erro) {
             falha = erro;
             Gdx.app.exit();
         }
+    }
+
+    private void aguardarFimDaPartida() {
+        if (fimDaPartida == 0) {
+            exigir(frame < LIMITE_DE_QUADROS, "A partida deve terminar sozinha");
+            if (!partidaTerminou()) return;
+            fimDaPartida = frame;
+            exigir(botao("Pausar").isDisabled(), "Fim bloqueia a pausa");
+            capturar("fim");
+            int movimentos = movimentos();
+            exigir(movimentos > 0, "Partida encerrada com movimentos");
+            movimentosAoPausar = movimentos;
+        } else if (frame == fimDaPartida + 30) {
+            capturar("resultado");
+        } else if (frame == fimDaPartida + 60) {
+            exigir(movimentos() == movimentosAoPausar, "Fim impede decisões adicionais");
+            tecla(Input.Keys.R);
+        } else if (frame == fimDaPartida + 65) {
+            exigir(movimentos() == 0, "Reinício por teclado");
+            exigir(textos().contains("Posição: [0, 0]"), "Posição reiniciada");
+            Gdx.graphics.setWindowedMode(960, 640);
+        } else if (frame == fimDaPartida + 95) {
+            capturar("janela-menor");
+            System.out.println("VERIFICAÇÃO DESKTOP OK: movimento automático, pausa, velocidade, fim de partida, reinício e redimensionamento.");
+            Gdx.app.exit();
+        }
+    }
+
+    private boolean partidaTerminou() {
+        List<String> textos = textos();
+        return List.of("Missão cumprida", "Agente perdido", "Exploração encerrada").stream()
+                .anyMatch(textos::contains);
+    }
+
+    private int movimentos() {
+        for (String texto : textos()) {
+            Matcher m = MOVIMENTOS.matcher(texto);
+            if (m.matches()) return Integer.parseInt(m.group(1));
+        }
+        throw new AssertionError("Contador de movimentos não encontrado");
     }
 
     private Stage stage() {

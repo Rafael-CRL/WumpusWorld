@@ -1,6 +1,6 @@
 # Wumpus World
 
-Jogo desktop em **Java e LibGDX**, com controle manual. Você escolhe cada movimento e a direção da flecha, usando brisa e fedor para encontrar o ouro e voltar à base.
+Visualização desktop em **Java e LibGDX** do Mundo de Wumpus. O agente autônomo decide sozinho cada movimento e disparo, em intervalos regulares, e a janela mostra a cada passo o estado do agente e do ambiente.
 
 ![Interface do jogo com o mapa revelado](docs/interface.png)
 
@@ -22,30 +22,25 @@ Windows:
 .\gradlew.bat run
 ```
 
-No IntelliJ IDEA, importe `build.gradle.kts` como projeto Gradle, aguarde a sincronização e execute `application > run` no painel Gradle. Também é possível executar o método `main` de `wumpusworld.desktop.DesktopLauncher`. No macOS, a tarefa `run` configura `-XstartOnFirstThread`; acrescente essa opção à JVM ao executar a classe diretamente pela IDE.
+No NetBeans (com suporte a Gradle) ou no IntelliJ IDEA, abra/importe o projeto pela pasta ou por `build.gradle.kts`, aguarde a sincronização e execute a tarefa `application > run`. Também é possível executar o método `main` de `wumpusworld.desktop.DesktopLauncher`. No macOS, a tarefa `run` configura `-XstartOnFirstThread`; acrescente essa opção à JVM ao executar a classe diretamente pela IDE.
 
-## Como jogar
+## Como funciona
 
-O personagem começa em `[0,0]`. Cada comando de movimento válido avança uma casa. **Nada se move enquanto você pensa.** As percepções e o diário ajudam a escolher o próximo passo.
+A partida começa sozinha: o agente sai de `[0,0]` e, a cada intervalo, observa brisa e fedor, decide o próximo passo (e dispara a flecha ao sentir fedor) e a tela atualiza posição, percepções, movimentos, pontuação, ouro e flecha. Nada exige digitação para avançar. O intervalo é medido pelo tempo entre quadros, sem `sleep`, então a janela nunca trava.
 
-| Ação | Teclado | Mouse |
+| Controle | Teclado | Mouse |
 | --- | --- | --- |
-| Mover para cima | ↑ ou W | Cima |
-| Mover para baixo | ↓ ou S | Baixo |
-| Mover para a esquerda | ← ou A | Esquerda |
-| Mover para a direita | → ou D | Direita |
-| Preparar flecha | F | Preparar flecha |
-| Disparar | Uma direção, com a mira ativa | Um botão direcional, com a mira ativa |
-| Cancelar mira | Esc ou F | Cancelar mira |
+| Pausar / continuar | Espaço | Pausar / Continuar |
+| Trocar velocidade (lenta 1,0 s, normal 0,6 s, rápida 0,25 s por passo) | — | Velocidade |
 | Nova partida | R | Nova partida |
-| Revelar / ocultar mapa | V | Revelar / ocultar mapa |
+| Revelar / ocultar mapa (só ajuda visual; o agente não o usa) | V | Revelar mapa |
 | Consultar diário | — | Roda do mouse sobre o painel |
 
-**Para atirar:** pressione F e depois escolha uma direção. Esse comando dispara sem mover o personagem e consome a única flecha, mesmo se errar. Apenas preparar ou cancelar a mira não custa pontos. Sentir fedor não provoca disparo automático.
+O ouro é coletado ao entrar na casa onde está e o agente volta pelo caminho percorrido; chegar à base com o ouro encerra a partida com vitória. As casas visitadas recebem uma cor diferente. Ao terminar (vitória, morte ou limite de exploração), o mapa completo é revelado.
 
-O ouro é coletado ao entrar na casa onde está. Depois, **você escolhe o caminho de volta**; chegar à base com o ouro encerra a partida com vitória. Bater na borda do mapa não gasta movimentos nem pontos.
+## Linhas e colunas na tela
 
-As casas visitadas recebem uma cor diferente. Ao terminar, o mapa é revelado e movimentos/disparos são bloqueados. **Nova partida** restaura posição, mapa, inventário, histórico, névoa e mira. Revelar o mapa durante o jogo funciona como ajuda visual.
+O domínio usa `[linha, coluna]` com origem no canto superior esquerdo. `TabuleiroActor` calcula o lado do tabuleiro pelo menor lado da área disponível e divide por 5 (`passo`); `Grade` faz a conversão. A coluna vira o deslocamento horizontal, `x + coluna * passo`; a linha vira o vertical, `y + (5 - 1 - linha) * passo`, porque o eixo Y do LibGDX cresce para cima. Cada casa mostra seu rótulo `linha,coluna`.
 
 ## Regras
 
@@ -64,34 +59,37 @@ src/main/java/wumpusworld/
 ├── dominio/
 │   ├── Mundo.java                 # Mapa, elementos, percepções e flecha
 │   ├── Direcao.java               # Direções de movimento e disparo
-│   └── AgenteInteligente.java     # Estado, movimento e estratégia autônoma original
+│   └── AgenteInteligente.java     # Estado, movimento e estratégia autônoma
 ├── aplicacao/
-│   ├── Partida.java               # Ações, encontros, eventos, pontuação e resultado
+│   ├── Partida.java               # Decisão autônoma, encontros, eventos, pontuação e resultado
 │   ├── EstadoPartida.java         # Exploração, retorno e resultados
-│   └── ControladorJogo.java       # Comandos manuais, mira e reinício
+│   ├── Disparo.java               # Registro imutável da flecha, para a interface animá-la
+│   ├── Velocidade.java            # Intervalos entre decisões
+│   └── ControladorJogo.java       # Temporização, pausa, velocidade e reinício
 ├── grafico/
 │   ├── WumpusGame.java            # Ciclo de vida da aplicação LibGDX
-│   ├── TelaPartida.java           # Layout e controles Scene2D
+│   ├── TelaPartida.java           # Layout, painéis e atalhos Scene2D
 │   ├── TabuleiroActor.java        # Desenho e animação do tabuleiro
+│   ├── Sprites.java               # Desenho procedural de casas, agente, poço, ouro e Wumpus
+│   ├── Efeitos.java               # Partículas, flecha, tremor, flash e faixa de resultado
+│   ├── Grade.java                 # Conversão de linha/coluna para coordenadas de tela
 │   └── Tema.java                  # Cores, fontes e estilos
 ├── desktop/
 │   └── DesktopLauncher.java       # Janela com backend LWJGL3
-└── Main.java                      # Demonstração autônoma original no terminal
+└── Main.java                      # Demonstração autônoma no terminal
 ```
 
-O domínio e a aplicação não importam LibGDX. A tela delega os comandos ao controlador; `Partida` aplica as regras. A renderização apenas atualiza a animação e desenha o estado, sem decidir movimentos. Os recursos gráficos são liberados em `dispose()`.
+O domínio e a aplicação não importam LibGDX. A tela repassa o tempo decorrido ao controlador, que aciona `Partida` em intervalos regulares; `Partida` aplica as regras. A renderização apenas anima e desenha o estado, sem decidir movimentos nem consultar posições ocultas para o agente. Os recursos gráficos são liberados em `dispose()`.
 
-O tabuleiro usa primitivas geométricas. A fonte DejaVu Sans e sua licença estão em `src/main/resources/fonts/`.
+O tabuleiro é desenhado por primitivas geométricas, degradês e transparência, sem imagens externas. A fonte DejaVu Sans e sua licença estão em `src/main/resources/fonts/`.
 
-### Demonstração autônoma no terminal
+### Demonstração no terminal
 
-A estratégia anterior continua disponível separadamente:
+A mesma partida pode ser executada sem janela:
 
 ```sh
 ./gradlew runConsole
 ```
-
-Nessa demonstração, o agente usa memória, estimativas de risco e desempates aleatórios; dispara ao sentir fedor e retorna pelo histórico. A interface gráfica utiliza somente as ações manuais.
 
 ## Verificação
 
@@ -99,7 +97,7 @@ Nessa demonstração, o agente usa memória, estimativas de risco e desempates a
 ./gradlew test
 ```
 
-Os testes cobrem movimentos manuais, bordas, mira, disparos, coleta, retorno escolhido pelo jogador, pontuação e bloqueio após o fim. Os testes da estratégia original também foram preservados, incluindo 300 partidas com sementes fixas.
+Os testes cobrem a temporização do controlador (intervalo, pausa, velocidade, fim e reinício), as regras do mundo e 300 partidas autônomas com sementes fixas, verificando movimentos, pontuação e término.
 
 Verificação gráfica opcional, com janela temporária que encerra automaticamente:
 
@@ -107,7 +105,7 @@ Verificação gráfica opcional, com janela temporária que encerra automaticame
 ./gradlew verifyDesktop
 ```
 
-Exercita mouse, WASD, setas, mira, disparo, coleta, retorno manual, vitória, reinício e redimensionamento. Verifica também que esperar não move o jogador. As capturas ficam em `build/desktop-validation/`. Requer ambiente gráfico e não faz parte do teste unitário padrão.
+Confere que o agente se move sozinho, que a pausa o congela, a troca de velocidade, o fim da partida (que bloqueia novas decisões), o reinício e o redimensionamento. As capturas ficam em `build/desktop-validation/`. Requer ambiente gráfico e não faz parte do teste unitário padrão.
 
 ## Distribuição
 

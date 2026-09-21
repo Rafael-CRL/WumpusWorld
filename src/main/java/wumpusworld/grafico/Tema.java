@@ -55,7 +55,7 @@ final class Tema implements Disposable {
     private void fonte(FreeTypeFontGenerator gerador, String nome, int tamanho) {
         FreeTypeFontGenerator.FreeTypeFontParameter parametros = new FreeTypeFontGenerator.FreeTypeFontParameter();
         parametros.size = tamanho;
-        parametros.characters = FreeTypeFontGenerator.DEFAULT_CHARS + "→←↑↓•–—×●◆○";
+        parametros.characters = FreeTypeFontGenerator.DEFAULT_CHARS + "•–—×●◆○▲";
         parametros.minFilter = Texture.TextureFilter.Linear;
         parametros.magFilter = Texture.TextureFilter.Linear;
         BitmapFont fonte = gerador.generateFont(parametros);

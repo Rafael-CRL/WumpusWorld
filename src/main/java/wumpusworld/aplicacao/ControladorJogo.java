@@ -1,35 +1,42 @@
 package wumpusworld.aplicacao;
 
-import wumpusworld.dominio.Direcao;
-
-/** Traduz comandos manuais em ações. Nenhuma ação depende do tempo entre quadros. */
+/**
+ * Faz o agente avançar em intervalos regulares, sem bloquear a janela.
+ * Recebe apenas o tempo decorrido entre quadros; quem decide a ação é {@link Partida}.
+ */
 public final class ControladorJogo {
     private Partida partida = new Partida();
-    private boolean preparandoDisparo;
+    private Velocidade velocidade = Velocidade.NORMAL;
+    private boolean pausado;
+    private float acumulado;
 
-    public void escolherDirecao(Direcao direcao) {
-        if (partida.getEstado().terminou()) return;
-        if (preparandoDisparo) {
-            partida.atirar(direcao);
-            preparandoDisparo = false;
-        } else {
-            partida.mover(direcao);
+    /** Acumula o tempo e executa, no máximo, uma decisão por chamada. */
+    public void atualizar(float segundos) {
+        if (pausado || partida.getEstado().terminou()) return;
+        acumulado += segundos;
+        if (acumulado >= velocidade.getIntervalo()) {
+            acumulado -= velocidade.getIntervalo();
+            partida.avancar();
         }
     }
 
-    public void alternarDisparo() {
-        if (!partida.getEstado().terminou() && partida.getAgente().possuiFlecha()) {
-            preparandoDisparo = !preparandoDisparo;
+    public void alternarPausa() {
+        if (!partida.getEstado().terminou()) {
+            pausado = !pausado;
         }
     }
 
-    public void cancelarDisparo() { preparandoDisparo = false; }
+    public void alternarVelocidade() {
+        velocidade = velocidade.proxima();
+    }
 
     public void reiniciar() {
         partida = new Partida();
-        preparandoDisparo = false;
+        pausado = false;
+        acumulado = 0;
     }
 
     public Partida getPartida() { return partida; }
-    public boolean estaPreparandoDisparo() { return preparandoDisparo; }
+    public Velocidade getVelocidade() { return velocidade; }
+    public boolean estaPausado() { return pausado; }
 }

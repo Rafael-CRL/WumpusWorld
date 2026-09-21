@@ -2,63 +2,85 @@ package wumpusworld.aplicacao;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import static wumpusworld.dominio.Direcao.*;
 
 class ControladorJogoTest {
-    @Test
-    void direcaoMoveUmaCasaSemAcaoAutomatica() {
-        ControladorJogo controlador = new ControladorJogo();
-        controlador.escolherDirecao(BAIXO);
-        var agente = controlador.getPartida().getAgente();
-        assertEquals(1, agente.getLinha());
-        assertEquals(0, agente.getColuna());
-        assertEquals(1, agente.getQuantidadeDeMovimentos());
-        assertEquals(-1, agente.getPontuacao());
+    private static int movimentos(ControladorJogo controlador) {
+        return controlador.getPartida().getAgente().getQuantidadeDeMovimentos();
     }
 
     @Test
-    void miraDisparaSemMoverEConsomeUmaUnicaFlecha() {
+    void agenteSoAvancaQuandoOIntervaloCompleta() {
         ControladorJogo controlador = new ControladorJogo();
-        controlador.alternarDisparo();
-        assertTrue(controlador.estaPreparandoDisparo());
-        controlador.escolherDirecao(DIREITA);
-        var agente = controlador.getPartida().getAgente();
-        assertEquals(0, agente.getQuantidadeDeMovimentos());
-        assertEquals(-10, agente.getPontuacao());
-        assertFalse(agente.possuiFlecha());
-        assertFalse(controlador.estaPreparandoDisparo());
-        controlador.alternarDisparo();
-        assertFalse(controlador.estaPreparandoDisparo());
-        controlador.escolherDirecao(DIREITA);
-        assertEquals(1, agente.getColuna());
+        float intervalo = controlador.getVelocidade().getIntervalo();
+        controlador.atualizar(intervalo / 2);
+        assertEquals(0, movimentos(controlador));
+        controlador.atualizar(intervalo / 2);
+        assertEquals(1, movimentos(controlador));
     }
 
     @Test
-    void cancelarMiraPermiteMoverSemGastarFlecha() {
+    void quadroLongoExecutaNoMaximoUmaDecisao() {
         ControladorJogo controlador = new ControladorJogo();
-        controlador.alternarDisparo();
-        controlador.cancelarDisparo();
-        controlador.escolherDirecao(BAIXO);
-        assertTrue(controlador.getPartida().getAgente().possuiFlecha());
-        assertEquals(1, controlador.getPartida().getAgente().getLinha());
-        controlador.alternarDisparo();
-        controlador.alternarDisparo();
-        assertFalse(controlador.estaPreparandoDisparo());
+        controlador.atualizar(10);
+        assertEquals(1, movimentos(controlador));
     }
 
     @Test
-    void novaPartidaRestauraPosicaoInventarioEMira() {
+    void pausaCongelaAPartidaEContinuarRetomaOMovimento() {
+        ControladorJogo controlador = new ControladorJogo();
+        float intervalo = controlador.getVelocidade().getIntervalo();
+        controlador.alternarPausa();
+        assertTrue(controlador.estaPausado());
+        controlador.atualizar(intervalo * 5);
+        assertEquals(0, movimentos(controlador));
+        controlador.alternarPausa();
+        controlador.atualizar(intervalo);
+        assertEquals(1, movimentos(controlador));
+    }
+
+    @Test
+    void velocidadeAlternaEmCicloComIntervalosDecrescentes() {
+        ControladorJogo controlador = new ControladorJogo();
+        assertEquals(Velocidade.NORMAL, controlador.getVelocidade());
+        controlador.alternarVelocidade();
+        assertEquals(Velocidade.RAPIDA, controlador.getVelocidade());
+        controlador.alternarVelocidade();
+        assertEquals(Velocidade.LENTA, controlador.getVelocidade());
+        assertTrue(Velocidade.LENTA.getIntervalo() > Velocidade.NORMAL.getIntervalo());
+        assertTrue(Velocidade.NORMAL.getIntervalo() > Velocidade.RAPIDA.getIntervalo());
+    }
+
+    @Test
+    void partidaTerminaSozinhaEBloqueiaNovasDecisoes() {
+        ControladorJogo controlador = new ControladorJogo();
+        int quadros = 0;
+        while (!controlador.getPartida().getEstado().terminou()) {
+            controlador.atualizar(controlador.getVelocidade().getIntervalo());
+            assertTrue(++quadros <= 204, "A partida deve terminar dentro do limite.");
+        }
+        int movimentos = movimentos(controlador);
+        int pontuacao = controlador.getPartida().getAgente().getPontuacao();
+        controlador.atualizar(10);
+        controlador.alternarPausa();
+        assertFalse(controlador.estaPausado(), "Não se pausa uma partida encerrada.");
+        assertEquals(movimentos, movimentos(controlador));
+        assertEquals(pontuacao, controlador.getPartida().getAgente().getPontuacao());
+    }
+
+    @Test
+    void novaPartidaRestauraEstadoInicialEDespausa() {
         ControladorJogo controlador = new ControladorJogo();
         Partida anterior = controlador.getPartida();
-        controlador.escolherDirecao(BAIXO);
-        controlador.alternarDisparo();
+        controlador.atualizar(10);
+        controlador.alternarPausa();
         controlador.reiniciar();
         assertNotSame(anterior, controlador.getPartida());
-        assertFalse(controlador.estaPreparandoDisparo());
+        assertFalse(controlador.estaPausado());
         var agente = controlador.getPartida().getAgente();
         assertEquals(0, agente.getQuantidadeDeMovimentos());
         assertEquals(0, agente.getPontuacao());
         assertEquals(0, agente.getLinha());
+        assertEquals(0, agente.getColuna());
         assertTrue(agente.possuiFlecha());
         assertFalse(agente.possuiOuro());
     }

@@ -10,7 +10,7 @@ public final class DesktopLauncher {
 
     public static void main(String[] args) {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-        config.setTitle("Wumpus World | Expedição manual");
+        config.setTitle("Wumpus World | Agente autônomo");
         config.setWindowedMode(1280, 820);
         config.setWindowSizeLimits(960, 640, -1, -1);
         config.useVsync(true);

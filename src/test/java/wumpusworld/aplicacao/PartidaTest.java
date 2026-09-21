@@ -83,6 +83,26 @@ class PartidaTest {
     }
 
     @Test
+    void disparoRegistradoDescreveATrajetoriaDaFlecha() {
+        boolean houveAcerto = false;
+        for (int seed = 0; seed < 300; seed++) {
+            Partida partida = new Partida(new Random(seed));
+            assertNull(partida.getDisparo());
+            while (!partida.getEstado().terminou()) partida.avancar();
+            Disparo disparo = partida.getDisparo();
+            assertEquals(!partida.getAgente().possuiFlecha(), disparo != null);
+            if (disparo == null) continue;
+            assertTrue(disparo.alcance() >= 0 && disparo.alcance() < Mundo.TAMANHO);
+            if (disparo.acertou()) {
+                houveAcerto = true;
+                assertEquals(2, disparo.linha() + disparo.direcao().getVariacaoLinha() * disparo.alcance());
+                assertEquals(3, disparo.coluna() + disparo.direcao().getVariacaoColuna() * disparo.alcance());
+            }
+        }
+        assertTrue(houveAcerto, "Alguma partida deve abater o Wumpus com a flecha.");
+    }
+
+    @Test
     void historicoNaoPodeSerModificadoPelaInterface() {
         Partida partida = new Partida();
         assertThrows(UnsupportedOperationException.class, () -> partida.getHistorico().clear());
