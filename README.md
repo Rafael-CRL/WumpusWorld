@@ -127,3 +127,14 @@ float y = margemY + (tamanhoMatriz - 1 - linha) * tamanhoCelula;
 * **Eixo Y**: `y = 50 + (4 - linha) * 100` (inversão do eixo vertical para que a linha `0` fique posicionada no topo da grade na tela).
 * **Parâmetros**: `tamanhoCelula = 100px`, `margemX = 50px`, `margemY = 50px`.
 
+
+## 9. Verificação do checklist
+
+- [x] Regras de risco, pontuação e retorno preservadas: a interface chama `Partida.executarPasso()` e consulta o núcleo, sem alterar suas decisões.
+- [x] Movimento automático sem espera bloqueante: `render()` acumula `Gdx.graphics.getDeltaTime()` e executa um passo a cada 0,5 segundo. Esse mecanismo do ciclo da libGDX equivale à atualização periódica solicitada; não utiliza `Thread.sleep`.
+- [x] Mensagens permanentes de morte, vitória (retorno à casa inicial com ouro) e limite de exploração, fora do histórico rolável.
+- [x] Mapa completo revelado nos três resultados, com posições originais de poços, Wumpus e ouro. Essa cópia visual não restaura elementos no jogo.
+- [x] Interface Java com libGDX e instruções de execução nas seções 2 a 4.
+- [x] Conversão de linha e coluna para coordenadas da tela explicada na seção 8.
+
+O limite é de 180 movimentos de exploração sem ouro. Após coletar o ouro, o agente retorna pelo caminho conhecido, conforme as regras do núcleo. O botão de reinício fica à direita, sem cobrir o mapa revelado.

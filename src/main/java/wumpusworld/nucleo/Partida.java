@@ -15,6 +15,7 @@ public final class Partida {
     private final List<String> registro = new ArrayList<>();
 
     private Situacao situacao = Situacao.EM_ANDAMENTO;
+    private String causaDaMorte;
     private int turno;
 
     private Posicao origemDoPasso = Posicao.INICIAL;
@@ -116,11 +117,13 @@ public final class Partida {
 
         switch (mundo.getElemento(posicao)) {
             case Mundo.POCO -> {
-                registrar("Caiu no poço!");
+                causaDaMorte = "O agente morreu porque caiu no poço.";
+                registrar(causaDaMorte);
                 aplicarMorte();
             }
             case Mundo.WUMPUS -> {
-                registrar("Devorado pelo Wumpus!");
+                causaDaMorte = "O agente morreu porque foi devorado pelo Wumpus.";
+                registrar(causaDaMorte);
                 aplicarMorte();
             }
             case Mundo.OURO -> {
@@ -177,6 +180,11 @@ public final class Partida {
 
     public AgenteInteligente getAgente() {
         return agente;
+    }
+
+    public String getDescricaoResultado() {
+        return situacao == Situacao.MORTE && causaDaMorte != null
+                ? causaDaMorte : situacao.getDescricao();
     }
 
     public Situacao getSituacao() {

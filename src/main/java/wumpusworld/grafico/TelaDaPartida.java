@@ -18,11 +18,12 @@ public class TelaDaPartida extends ApplicationAdapter {
     private ShapeRenderer formas;
     private BitmapFont fonte;
     private Partida partida;
+    private Mundo mapaInicial;
     private float tempo;
     private float scrollY = 0f;
 
-    private static final float BOTAO_X = 185f;
-    private static final float BOTAO_Y = 275f;
+    private static final float BOTAO_X = 670f;
+    private static final float BOTAO_Y = 20f;
     private static final float BOTAO_LARGURA = 230f;
     private static final float BOTAO_ALTURA = 50f;
 
@@ -33,6 +34,7 @@ public class TelaDaPartida extends ApplicationAdapter {
         this.fonte = new BitmapFont();
         this.fonte.getData().setScale(1.3f);
         this.partida = new Partida();
+        this.mapaInicial = partida.getMundo().reiniciar();
 
         Gdx.input.setInputProcessor(new com.badlogic.gdx.InputAdapter() {
             @Override
@@ -42,6 +44,7 @@ public class TelaDaPartida extends ApplicationAdapter {
                     if (screenX >= BOTAO_X && screenX <= BOTAO_X + BOTAO_LARGURA
                             && drawY >= BOTAO_Y && drawY <= BOTAO_Y + BOTAO_ALTURA) {
                         partida = new Partida();
+                        mapaInicial = partida.getMundo().reiniciar();
                         tempo = 0f;
                         scrollY = 0f;
                         return true;
@@ -69,7 +72,8 @@ public class TelaDaPartida extends ApplicationAdapter {
 
         if (!partida.getSituacao().encerrada()) {
             tempo += delta;
-            if (tempo > 0.5f) {
+            // Acumula tempo entre quadros sem bloquear os eventos da janela.
+            if (tempo >= 0.5f) {
                 partida.executarPasso();
                 tempo = 0f;
             }
@@ -136,6 +140,14 @@ public class TelaDaPartida extends ApplicationAdapter {
         // Legenda - Textos
         desenharTextosDaLegenda();
 
+        // Resultado permanece visível fora da grade e do histórico rolável.
+        if (partida.getSituacao().encerrada()) {
+            fonte.getData().setScale(1.1f);
+            GlyphLayout resultado = new GlyphLayout(fonte,
+                    partida.getDescricaoResultado(), Color.WHITE, 370, -1, true);
+            fonte.draw(lote, resultado, 600, 495);
+        }
+
         // Texto do Botão "JOGAR NOVAMENTE" centralizado
         if (partida.getSituacao().encerrada()) {
             fonte.getData().setScale(1.15f);
@@ -151,17 +163,17 @@ public class TelaDaPartida extends ApplicationAdapter {
         java.util.List<String> registro = partida.getRegistro();
 
         GlyphLayout layout = new GlyphLayout();
-        float currentY = 30 - scrollY;
+        float currentY = (partida.getSituacao().encerrada() ? 90 : 30) - scrollY;
         for (int i = registro.size() - 1; i >= 0; i--) {
             String texto = registro.get(i);
             layout.setText(fonte, texto, Color.WHITE, 370, -1, true);
 
             float drawY = currentY + layout.height;
-            if (drawY > 500) {
+            if (drawY > (partida.getSituacao().encerrada() ? 410 : 500)) {
                 break;
             }
 
-            if (drawY > 0) {
+            if (currentY >= (partida.getSituacao().encerrada() ? 85 : 0)) {
                 fonte.draw(lote, layout, 600, drawY);
             }
 
@@ -182,7 +194,7 @@ public class TelaDaPartida extends ApplicationAdapter {
                 float x = margemX + c * lado;
                 float y = margemY + (tamanho - 1 - l) * lado;
 
-                boolean conhecida = partida.getMundo().foiVisitada(l, c) || partida.getSituacao().encerrada();
+                boolean conhecida = partida.getMundo().foiVisitada(l, c) || partida.mapaDeveSerRevelado();
 
                 if (conhecida) {
                     formas.setColor(0.75f, 0.75f, 0.75f, 1);
@@ -192,7 +204,10 @@ public class TelaDaPartida extends ApplicationAdapter {
                 formas.rect(x + 2, y + 2, lado - 4, lado - 4);
 
                 if (conhecida) {
-                    char elem = partida.getMundo().getElemento(l, c);
+                    // A cópia inicial serve apenas à revelação; não interfere na simulação.
+                    char elem = partida.mapaDeveSerRevelado()
+                            ? mapaInicial.getElemento(l, c)
+                            : partida.getMundo().getElemento(l, c);
                     float cx = x + lado / 2;
                     float cy = y + lado / 2;
 
