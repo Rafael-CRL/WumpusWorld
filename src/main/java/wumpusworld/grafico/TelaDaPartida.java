@@ -72,19 +72,16 @@ public class TelaDaPartida extends ApplicationAdapter {
 
         if (!partida.getSituacao().encerrada()) {
             tempo += delta;
-            // Acumula tempo entre quadros sem bloquear os eventos da janela.
             if (tempo >= 0.5f) {
                 partida.executarPasso();
                 tempo = 0f;
             }
         }
 
-        // --- Renderização de Formas (ShapeRenderer) ---
         formas.begin(ShapeRenderer.ShapeType.Filled);
         desenharGradeEElementos();
         desenharLegenda();
 
-        // Botão de reinício se a partida terminou (estilo limpo com borda)
         if (partida.getSituacao().encerrada()) {
             formas.setColor(0.15f, 0.55f, 0.25f, 1f);
             formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
@@ -98,10 +95,8 @@ public class TelaDaPartida extends ApplicationAdapter {
             formas.end();
         }
 
-        // --- Renderização de Textos (SpriteBatch) ---
         lote.begin();
 
-        // HUD - Painel Superior Esquerdo
         Posicao posAgente = partida.getAgente().getPosicao();
         fonte.getData().setScale(1.2f);
         fonte.draw(lote, "Situação: " + partida.getSituacao().getTitulo(), 50, 680);
@@ -119,28 +114,23 @@ public class TelaDaPartida extends ApplicationAdapter {
             fonte.draw(lote, "Percepções: " + percepcoesStr, 50, 590);
         }
 
-        // Desenhar Rótulos dos Eixos (Apenas 0 a 4)
         fonte.getData().setScale(1.1f);
         int tamanho = Mundo.TAMANHO;
         float lado = 100f;
         float margemX = 50f;
         float margemY = 50f;
 
-        // Números das colunas (0 a 4 na parte inferior da grade)
         for (int c = 0; c < tamanho; c++) {
             float cx = margemX + c * lado + lado / 2 - 5;
             fonte.draw(lote, String.valueOf(c), cx, margemY - 12);
         }
-        // Números das linhas (0 a 4 na lateral esquerda da grade)
         for (int l = 0; l < tamanho; l++) {
             float ly = margemY + (tamanho - 1 - l) * lado + lado / 2 + 7;
             fonte.draw(lote, String.valueOf(l), margemX - 25, ly);
         }
 
-        // Legenda - Textos
         desenharTextosDaLegenda();
 
-        // Resultado permanece visível fora da grade e do histórico rolável.
         if (partida.getSituacao().encerrada()) {
             fonte.getData().setScale(1.1f);
             GlyphLayout resultado = new GlyphLayout(fonte,
@@ -148,7 +138,6 @@ public class TelaDaPartida extends ApplicationAdapter {
             fonte.draw(lote, resultado, 600, 495);
         }
 
-        // Texto do Botão "JOGAR NOVAMENTE" centralizado
         if (partida.getSituacao().encerrada()) {
             fonte.getData().setScale(1.15f);
             GlyphLayout layoutBotao = new GlyphLayout(fonte, "JOGAR NOVAMENTE");
@@ -157,7 +146,6 @@ public class TelaDaPartida extends ApplicationAdapter {
             fonte.draw(lote, layoutBotao, tx, ty);
         }
 
-        // Painel do Histórico (Lado Direito)
         fonte.getData().setScale(1.1f);
         fonte.draw(lote, "HISTÓRICO DE EVENTOS:", 600, 530);
         java.util.List<String> registro = partida.getRegistro();
@@ -204,7 +192,6 @@ public class TelaDaPartida extends ApplicationAdapter {
                 formas.rect(x + 2, y + 2, lado - 4, lado - 4);
 
                 if (conhecida) {
-                    // A cópia inicial serve apenas à revelação; não interfere na simulação.
                     char elem = partida.mapaDeveSerRevelado()
                             ? mapaInicial.getElemento(l, c)
                             : partida.getMundo().getElemento(l, c);
@@ -239,27 +226,21 @@ public class TelaDaPartida extends ApplicationAdapter {
         float baseX = 600f;
         float baseY = 560f;
 
-        // Fundo do painel de legenda
         formas.setColor(0.25f, 0.25f, 0.25f, 1);
         formas.rect(baseX, baseY, 370, 120);
 
-        // Agente (Círculo Azul)
         formas.setColor(Color.BLUE);
         formas.circle(baseX + 25, baseY + 95, 10);
 
-        // Poço (Círculo Preto)
         formas.setColor(Color.BLACK);
         formas.circle(baseX + 25, baseY + 60, 10);
 
-        // Wumpus (Círculo Vermelho)
         formas.setColor(Color.RED);
         formas.circle(baseX + 25, baseY + 25, 10);
 
-        // Ouro (Quadrado Amarelo)
         formas.setColor(Color.YELLOW);
         formas.rect(baseX + 195, baseY + 85, 18, 18);
 
-        // Flecha (Retângulo Verde)
         formas.setColor(Color.GREEN);
         formas.rect(baseX + 200, baseY + 50, 8, 20);
     }

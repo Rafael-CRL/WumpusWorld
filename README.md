@@ -17,7 +17,7 @@ Aplicação gráfica interativa do **Mundo de Wumpus** desenvolvida em **Java** 
 ### Passo 1: Clonar ou Baixar o Repositório
 Abra o terminal e navegue até a pasta do projeto:
 ```bash
-cd WumpusWorld-main
+cd WumpusWorld
 ```
 
 ### Passo 2: Dar Permissão de Execução (Linux/macOS)
@@ -57,10 +57,10 @@ Você pode compilar um arquivo `.jar` único que embute todas as dependências e
 
 ---
 
-## 4. Executando em uma IDE (NetBeans 31 / IntelliJ / Eclipse)
+## 4. Executando em uma IDE (NetBeans / IntelliJ / Eclipse)
 
 1. **Abrir o projeto**:
-   * **Apache NetBeans 31**: *File → Open Project* e selecione a pasta do projeto.
+   * **Apache NetBeans**: *File → Open Project* e selecione a pasta do projeto.
    * **IntelliJ IDEA**: *File → Open* e selecione o arquivo `build.gradle.kts` (abrir como projeto Gradle).
    * **Eclipse**: *File → Import → Existing Gradle Project*.
 2. **Classe Principal**: `wumpusworld.Main`
@@ -114,7 +114,7 @@ src/main/java/wumpusworld/
 
 ---
 
-## 8. Mapeamento de Coordenadas (Matriz → Tela)
+## 7. Mapeamento de Coordenadas (Matriz → Tela)
 
 No projeto, o sistema de coordenadas do mundo (matriz $5 \times 5$, onde `[0][0]` é o canto superior esquerdo da matriz) é convertido para as coordenadas de renderização bidimensional da libGDX (onde o eixo Y cresce de baixo para cima) da seguinte forma:
 
@@ -128,13 +128,13 @@ float y = margemY + (tamanhoMatriz - 1 - linha) * tamanhoCelula;
 * **Parâmetros**: `tamanhoCelula = 100px`, `margemX = 50px`, `margemY = 50px`.
 
 
-## 9. Verificação do checklist
+## 8. Verificação do checklist
 
 - [x] Regras de risco, pontuação e retorno preservadas: a interface chama `Partida.executarPasso()` e consulta o núcleo, sem alterar suas decisões.
 - [x] Movimento automático sem espera bloqueante: `render()` acumula `Gdx.graphics.getDeltaTime()` e executa um passo a cada 0,5 segundo. Esse mecanismo do ciclo da libGDX equivale à atualização periódica solicitada; não utiliza `Thread.sleep`.
 - [x] Mensagens permanentes de morte, vitória (retorno à casa inicial com ouro) e limite de exploração, fora do histórico rolável.
 - [x] Mapa completo revelado nos três resultados, com posições originais de poços, Wumpus e ouro. Essa cópia visual não restaura elementos no jogo.
 - [x] Interface Java com libGDX e instruções de execução nas seções 2 a 4.
-- [x] Conversão de linha e coluna para coordenadas da tela explicada na seção 8.
+- [x] Conversão de linha e coluna para coordenadas da tela explicada na seção 7.
 
 O limite é de 180 movimentos de exploração sem ouro. Após coletar o ouro, o agente retorna pelo caminho conhecido, conforme as regras do núcleo. O botão de reinício fica à direita, sem cobrir o mapa revelado.
