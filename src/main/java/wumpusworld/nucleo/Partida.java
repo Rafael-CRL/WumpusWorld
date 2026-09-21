@@ -88,11 +88,6 @@ public final class Partida {
 
     private void dispararFlecha() {
         Direcao direcao = agente.escolherDirecaoDaFlecha(mundo);
-        if (Math.random() < 0.3) {
-            Direcao[] todas = Direcao.values();
-            direcao = todas[(int)(Math.random() * todas.length)];
-        }
-
         Posicao origem = agente.getPosicao();
         Posicao destino = mundo.calcularAlcanceDaFlecha(origem, direcao);
 

@@ -111,7 +111,8 @@ public class TelaDaPartida extends ApplicationAdapter {
             if (percepcoesStr.isEmpty()) {
                 percepcoesStr = "Nenhuma";
             }
-            fonte.draw(lote, "Percepções: " + percepcoesStr, 50, 590);
+            int perigo = partida.getAgente().getRisco(posAgente.linha(), posAgente.coluna());
+            fonte.draw(lote, "Percepções: " + percepcoesStr + " | Perigo: " + perigo, 50, 590);
         }
 
         fonte.getData().setScale(1.1f);
