@@ -12,6 +12,7 @@ public class Mundo {
     public static final char POCO = 'P';
     public static final char WUMPUS = 'W';
     public static final char OURO = 'O';
+    public static final char DESCONHECIDO = '?';
 
     private final char[][] mapa;
     private final boolean[][] visitado;
@@ -44,6 +45,14 @@ public class Mundo {
 
     public char getElemento(int linha, int coluna) {
         return mapa[linha][coluna];
+    }
+
+    /**
+     * Elemento que a interface pode mostrar: o conteúdo real só é devolvido
+     * para casas visitadas ou quando o mapa está revelado.
+     */
+    public char getElementoVisivel(int linha, int coluna, boolean revelarTudo) {
+        return revelarTudo || visitado[linha][coluna] ? mapa[linha][coluna] : DESCONHECIDO;
     }
 
     public void removerElemento(int linha, int coluna) {

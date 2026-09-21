@@ -175,10 +175,11 @@ final class TabuleiroActor extends Widget implements Disposable {
                 if (linha == 0 && coluna == 0) {
                     Sprites.base(formas, cx, cy, grade.passo(), tempo, chamando);
                 }
-                if (mapaAberto || visitada) {
-                    desenharElemento(mundo.getElemento(linha, coluna), cx, cy, grade.passo());
-                } else {
+                char elemento = mundo.getElementoVisivel(linha, coluna, mapaAberto);
+                if (elemento == Mundo.DESCONHECIDO) {
                     Sprites.nevoa(formas, cx, cy);
+                } else {
+                    desenharElemento(elemento, cx, cy, grade.passo());
                 }
             }
         }
@@ -206,7 +207,7 @@ final class TabuleiroActor extends Widget implements Disposable {
         fonte.setColor(Tema.SUAVE);
         for (int linha = 0; linha < Mundo.TAMANHO; linha++) {
             for (int coluna = 0; coluna < Mundo.TAMANHO; coluna++) {
-                fonte.draw(batch, linha + "," + coluna, grade.centroX(coluna) - grade.passo() / 2 + 11,
+                fonte.draw(batch, "[" + linha + "," + coluna + "]", grade.centroX(coluna) - grade.passo() / 2 + 11,
                         grade.centroY(linha) + grade.passo() / 2 - 10);
             }
         }
