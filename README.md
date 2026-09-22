@@ -112,7 +112,9 @@ src/main/java/wumpusworld/
     ├── TelaDaPartida.java         # Conduz o quadro: relógio da simulação, ordem de desenho e captura de clique/scroll
     ├── PainelTabuleiro.java       # Converte a matriz em coordenadas de tela e desenha a grade, os elementos e o agente
     ├── PainelInformacoes.java     # Painel de estado (HUD) e legenda dos símbolos
-    └── PainelHistorico.java       # Histórico rolável, mensagem de resultado e botão "JOGAR NOVAMENTE"
+    ├── PainelHistorico.java       # Histórico rolável, mensagem de resultado e botão "JOGAR NOVAMENTE"
+    ├── Paleta.java                # Todas as cores da janela, compartilhadas por tabuleiro e legenda
+    └── Fontes.java                # Gera as fontes a partir de assets/fontes (DejaVuSans) via gdx-freetype
 ```
 
 Cada painel expõe dois métodos, `desenharFormas` e `desenharTextos`, porque o `ShapeRenderer` e o `SpriteBatch` da libGDX não podem ficar abertos ao mesmo tempo: a `TelaDaPartida` abre um pincel de cada vez e percorre os três painéis em cada passagem. Nenhum painel guarda estado do jogo — todos recebem a `Partida` como argumento a cada quadro.
@@ -130,7 +132,7 @@ float y = margemY + (tamanhoMatriz - 1 - linha) * tamanhoCelula;
 
 * **Eixo X**: `x = 50 + coluna * 100` (deslocamento horizontal com base na coluna).
 * **Eixo Y**: `y = 50 + (4 - linha) * 100` (inversão do eixo vertical para que a linha `0` fique posicionada no topo da grade na tela).
-* **Parâmetros**: `tamanhoCelula = 100px`, `margemX = 50px`, `margemY = 50px`.
+* **Parâmetros**: `tamanhoCelula = 500 / tamanhoMatriz` (100px na matriz 5×5), `margemX = 50px`, `margemY = 50px`. A grade ocupa sempre o mesmo quadrado de 500px; mudar `Mundo.TAMANHO` redimensiona as casas sem mexer no layout.
 
 A conversão está concentrada nos métodos `x(coluna)` e `y(linha)` de `PainelTabuleiro`, usados por todo o desenho da grade. A conversão inversa aparece uma única vez, no tratamento do clique em `TelaDaPartida`: o mouse chega com o eixo Y invertido, e o ponto é convertido com `ALTURA_DA_JANELA - screenY` antes de ser testado contra o botão.
 

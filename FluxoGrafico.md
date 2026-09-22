@@ -1,6 +1,6 @@
 # A camada gráfica — do terminal à janela
 
-Este documento trata só da apresentação. Ele parte do mapa impresso em caracteres, mostra o que foi feito para ele virar um tabuleiro desenhado, e percorre as cinco classes que hoje cuidam disso. As regras do jogo não aparecem aqui — elas estão descritas em `FluxoGeral.md`.
+Este documento trata só da apresentação. Ele parte do mapa impresso em caracteres, mostra o que foi feito para ele virar um tabuleiro desenhado, e percorre as classes que hoje cuidam disso. As regras do jogo não aparecem aqui — elas estão descritas em `FluxoGeral.md`.
 
 > **Convenção:** nomes marcados **(libGDX)** vêm da biblioteca gráfica, dentro dos JARs que o Gradle baixa. Todos os outros nomes são arquivos `.java` do projeto.
 
@@ -78,7 +78,7 @@ x = margem + coluna × lado
 y = margem + (TAMANHO - 1 - linha) × lado
 ```
 
-A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela, como aparecia no topo da impressão.
+O `lado` vale `500 / TAMANHO`: a grade ocupa sempre o mesmo quadrado, e as formas dentro de cada casa são frações do lado. A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela, como aparecia no topo da impressão.
 
 **Repintura, porque não existe rolagem.** A janela não acumula: cada quadro apaga tudo e redesenha do zero, sessenta vezes por segundo. Isso tem uma consequência que não é óbvia — **o histórico teve de ser construído à mão**. O que no terminal era um efeito colateral gratuito (o texto antigo ficava acima) virou uma lista de mensagens guardada pela `Partida` e um painel que a desenha de baixo para cima, com rolagem própria.
 
@@ -86,7 +86,7 @@ A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da jan
 
 ## 4. Quem faz o quê
 
-Cinco classes cuidam da apresentação.
+Sete classes cuidam da apresentação.
 
 | Classe | Responsabilidade |
 |---|---|
@@ -95,6 +95,8 @@ Cinco classes cuidam da apresentação.
 | `PainelTabuleiro` | Converte a matriz em coordenadas e desenha a grade |
 | `PainelInformacoes` | Escreve o estado atual e explica os símbolos |
 | `PainelHistorico` | Registro rolante, desfecho e botão de reinício |
+| `Paleta` | Todas as cores da janela; tabuleiro e legenda leem as mesmas |
+| `Fontes` | Gera as três fontes a partir dos arquivos TTF |
 
 Vale notar de onde cada painel veio. No terminal, quem imprimia o mapa era o próprio `Mundo`, e quem imprimia pontuação e percepções era o `main` — ou seja, a regra e a apresentação moravam juntas. Hoje o `Mundo` não imprime nada: ele só responde perguntas, e quem pergunta é o painel. É a mesma informação, com a decisão de *como mostrá-la* movida para fora das regras.
 
@@ -108,7 +110,7 @@ O contrato de uso é este: desenhar exige uma janela e um laço a sessenta quadr
 
 Essa primeira chamada é o `create()`, e é nele que a tela se equipa, e não no construtor: os pincéis precisam do contexto gráfico, que só existe depois que a janela abre. São quatro providências:
 
-1. **Os pincéis e a fonte.** `ShapeRenderer` desenha formas, `SpriteBatch` desenha texto, `BitmapFont` **(libGDX)** fornece as letras. São a totalidade das ferramentas de desenho do projeto — não há arquivo de imagem nenhum.
+1. **Os pincéis e as fontes.** `ShapeRenderer` desenha formas, `SpriteBatch` desenha texto, três `BitmapFont` **(libGDX)** fornecem as letras — geradas pela classe `Fontes` a partir do DejaVuSans, já no tamanho de uso, em vez de ampliar uma fonte pronta e borrá-la. São a totalidade das ferramentas de desenho do projeto — não há arquivo de imagem nenhum.
 2. **A partida**, que é o jogo em si.
 3. **Uma cópia congelada do mapa.** Durante o jogo, o ouro e a flecha são apagados da matriz ao serem recolhidos. Se a revelação final lesse o mapa vivo, mostraria casas vazias onde estavam os tesouros. Esta cópia guarda o mapa como ele era no primeiro quadro, e serve só para essa exibição — é o equivalente ao `revelarTudo` da impressão do terminal, com uma diferença que o obrigou a existir: lá a impressão era imediata e o mapa ainda estava intacto; aqui a revelação acontece no fim, quando a matriz já mudou.
 4. **O tratamento de mouse**, descrito na seção 8.
@@ -147,8 +149,8 @@ O clique faz uma coisa só: descarta a partida atual e cria outra, com nova cóp
 
 ## 9. O fecho
 
-Ao fechar a janela, o laço chama `dispose()` na tela, que libera a fonte e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
+Ao fechar a janela, o laço chama `dispose()` na tela, que libera as fontes e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
 
 ---
 
-**Em uma frase:** o laço duplo sobre a matriz é o mesmo do terminal; trocou-se `System.out.print(mapa[l][c])` por `formas.circle(...)`, e com isso vieram três obrigações que o terminal cumpria sozinho — calcular coordenadas, repintar a cada quadro e contar o tempo em vez de dormir. As cinco classes de `grafico` existem para dar conta dessas três obrigações, e nenhuma delas decide nada sobre o jogo.
+**Em uma frase:** o laço duplo sobre a matriz é o mesmo do terminal; trocou-se `System.out.print(mapa[l][c])` por `formas.circle(...)`, e com isso vieram três obrigações que o terminal cumpria sozinho — calcular coordenadas, repintar a cada quadro e contar o tempo em vez de dormir. As classes de `grafico` existem para dar conta dessas três obrigações, e nenhuma delas decide nada sobre o jogo.

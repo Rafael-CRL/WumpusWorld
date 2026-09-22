@@ -3,10 +3,9 @@ package wumpusworld.grafico;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.ScreenUtils;
 import wumpusworld.nucleo.Mundo;
 import wumpusworld.nucleo.Partida;
 
@@ -19,7 +18,10 @@ import wumpusworld.nucleo.Partida;
  */
 public class TelaDaPartida extends ApplicationAdapter {
 
-    private static final float ALTURA_DA_JANELA = 700f;
+    /** Dimensões da janela. O {@code Main} as usa para abri-la; o clique, para converter o eixo Y. */
+    public static final int LARGURA_DA_JANELA = 1000;
+    public static final int ALTURA_DA_JANELA = 700;
+
     private static final float INTERVALO_DO_PASSO = 0.5f;
 
     private final PainelTabuleiro painelTabuleiro = new PainelTabuleiro();
@@ -28,7 +30,7 @@ public class TelaDaPartida extends ApplicationAdapter {
 
     private SpriteBatch lote;
     private ShapeRenderer formas;
-    private BitmapFont fonte;
+    private Fontes fontes;
     private Partida partida;
 
     /**
@@ -44,8 +46,7 @@ public class TelaDaPartida extends ApplicationAdapter {
     public void create() {
         this.lote = new SpriteBatch();
         this.formas = new ShapeRenderer();
-        this.fonte = new BitmapFont();
-        this.fonte.getData().setScale(1.3f);
+        this.fontes = new Fontes();
         iniciarNovaPartida();
 
         Gdx.input.setInputProcessor(new InputAdapter() {
@@ -80,8 +81,7 @@ public class TelaDaPartida extends ApplicationAdapter {
     @Override
     public void render() {
         float delta = Gdx.graphics.getDeltaTime();
-        Gdx.gl.glClearColor(0.18f, 0.18f, 0.18f, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        ScreenUtils.clear(Paleta.FUNDO);
 
         // A janela se redesenha a cada quadro; o jogo avança a cada meio segundo.
         if (!partida.getSituacao().encerrada()) {
@@ -107,15 +107,15 @@ public class TelaDaPartida extends ApplicationAdapter {
         }
 
         lote.begin();
-        painelTabuleiro.desenharTextos(lote, fonte);
-        painelInformacoes.desenharTextos(lote, fonte, partida);
-        painelHistorico.desenharTextos(lote, fonte, partida);
+        painelTabuleiro.desenharTextos(lote, fontes);
+        painelInformacoes.desenharTextos(lote, fontes, partida);
+        painelHistorico.desenharTextos(lote, fontes, partida);
         lote.end();
     }
 
     @Override
     public void dispose() {
-        fonte.dispose();
+        fontes.dispose();
         lote.dispose();
         formas.dispose();
     }

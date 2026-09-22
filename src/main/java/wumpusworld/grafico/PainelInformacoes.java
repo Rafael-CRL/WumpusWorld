@@ -1,6 +1,5 @@
 package wumpusworld.grafico;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
@@ -27,32 +26,35 @@ public class PainelInformacoes {
     private static final float LEGENDA_LARGURA = 370f;
     private static final float LEGENDA_ALTURA = 120f;
 
+    private static final float RAIO_DO_SIMBOLO = 10f;
+    private static final int SEGMENTOS = 32;
+
     /** A caixa da legenda e os símbolos dentro dela, nas mesmas cores da grade. */
     public void desenharFormas(ShapeRenderer formas) {
-        formas.setColor(0.25f, 0.25f, 0.25f, 1);
+        formas.setColor(Paleta.PAINEL);
         formas.rect(LEGENDA_X, LEGENDA_Y, LEGENDA_LARGURA, LEGENDA_ALTURA);
 
-        formas.setColor(Color.BLUE);
-        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 95, 10);
+        formas.setColor(Paleta.AGENTE);
+        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 95, RAIO_DO_SIMBOLO, SEGMENTOS);
 
-        formas.setColor(Color.BLACK);
-        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 60, 10);
+        formas.setColor(Paleta.POCO);
+        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 60, RAIO_DO_SIMBOLO, SEGMENTOS);
 
-        formas.setColor(Color.RED);
-        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 25, 10);
+        formas.setColor(Paleta.WUMPUS);
+        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 25, RAIO_DO_SIMBOLO, SEGMENTOS);
 
-        formas.setColor(Color.YELLOW);
+        formas.setColor(Paleta.OURO);
         formas.rect(LEGENDA_X + 195, LEGENDA_Y + 85, 18, 18);
 
-        formas.setColor(Color.GREEN);
+        formas.setColor(Paleta.FLECHA);
         formas.rect(LEGENDA_X + 200, LEGENDA_Y + 50, 8, 20);
     }
 
-    public void desenharTextos(SpriteBatch lote, BitmapFont fonte, Partida partida) {
+    public void desenharTextos(SpriteBatch lote, Fontes fontes, Partida partida) {
         Posicao posAgente = partida.getAgente().getPosicao();
+        BitmapFont fonte = fontes.texto;
 
-        fonte.getData().setScale(1.2f);
-        fonte.draw(lote, "Situação: " + partida.getSituacao().getTitulo(), TEXTO_X, Y_SITUACAO);
+        fontes.destaque.draw(lote, "Situação: " + partida.getSituacao().getTitulo(), TEXTO_X, Y_SITUACAO);
         fonte.draw(lote, "Posição Atual: " + posAgente
                 + " | Movimentos: " + partida.getAgente().getQuantidadeDeMovimentos()
                 + " | Pontos: " + partida.getAgente().getPontuacao(), TEXTO_X, Y_ESTADO);
@@ -71,11 +73,10 @@ public class PainelInformacoes {
                     TEXTO_X, Y_PERCEPCOES);
         }
 
-        desenharRotulosDaLegenda(lote, fonte);
+        desenharRotulosDaLegenda(lote, fontes.pequena);
     }
 
     private void desenharRotulosDaLegenda(SpriteBatch lote, BitmapFont fonte) {
-        fonte.getData().setScale(1.0f);
         fonte.draw(lote, "Agente", LEGENDA_X + 45, LEGENDA_Y + 100);
         fonte.draw(lote, "Poço", LEGENDA_X + 45, LEGENDA_Y + 65);
         fonte.draw(lote, "Wumpus", LEGENDA_X + 45, LEGENDA_Y + 30);

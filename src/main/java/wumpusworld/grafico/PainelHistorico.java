@@ -2,7 +2,6 @@ package wumpusworld.grafico;
 
 import java.util.List;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -63,37 +62,35 @@ public class PainelHistorico {
 
     public void desenharFormas(ShapeRenderer formas, Partida partida) {
         if (partida.getSituacao().encerrada()) {
-            formas.setColor(0.15f, 0.55f, 0.25f, 1f);
+            formas.setColor(Paleta.BOTAO);
             formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
         }
     }
 
     /** Chamado na passagem de contorno, separada da passagem preenchida. */
     public void desenharContornoDoBotao(ShapeRenderer formas) {
-        formas.setColor(0.35f, 0.85f, 0.45f, 1f);
+        formas.setColor(Paleta.BOTAO_CONTORNO);
         formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
     }
 
-    public void desenharTextos(SpriteBatch lote, BitmapFont fonte, Partida partida) {
+    public void desenharTextos(SpriteBatch lote, Fontes fontes, Partida partida) {
         boolean encerrada = partida.getSituacao().encerrada();
+        BitmapFont fonte = fontes.texto;
 
         if (encerrada) {
-            fonte.getData().setScale(1.1f);
             GlyphLayout resultado = new GlyphLayout(fonte,
-                    partida.getDescricaoResultado(), Color.WHITE, LARGURA_DO_TEXTO, -1, true);
+                    partida.getDescricaoResultado(), Paleta.TEXTO, LARGURA_DO_TEXTO, -1, true);
             fonte.draw(lote, resultado, COLUNA_X, Y_DO_RESULTADO);
         }
 
         if (encerrada) {
-            fonte.getData().setScale(1.15f);
-            GlyphLayout layoutBotao = new GlyphLayout(fonte, "JOGAR NOVAMENTE");
+            GlyphLayout layoutBotao = new GlyphLayout(fontes.destaque, "JOGAR NOVAMENTE");
             float tx = BOTAO_X + (BOTAO_LARGURA - layoutBotao.width) / 2f;
             float ty = BOTAO_Y + (BOTAO_ALTURA + layoutBotao.height) / 2f;
-            fonte.draw(lote, layoutBotao, tx, ty);
+            fontes.destaque.draw(lote, layoutBotao, tx, ty);
         }
 
-        fonte.getData().setScale(1.1f);
-        fonte.draw(lote, "HISTÓRICO DE EVENTOS:", COLUNA_X, Y_DO_TITULO);
+        fontes.destaque.draw(lote, "HISTÓRICO DE EVENTOS:", COLUNA_X, Y_DO_TITULO);
 
         List<String> registro = partida.getRegistro();
         float topo = encerrada ? TOPO_COM_BOTAO : TOPO_SEM_BOTAO;
@@ -104,7 +101,7 @@ public class PainelHistorico {
 
         // As entradas mais recentes ficam embaixo, então a lista é montada de trás para frente.
         for (int i = registro.size() - 1; i >= 0; i--) {
-            layout.setText(fonte, registro.get(i), Color.WHITE, LARGURA_DO_TEXTO, -1, true);
+            layout.setText(fonte, registro.get(i), Paleta.TEXTO, LARGURA_DO_TEXTO, -1, true);
 
             float drawY = currentY + layout.height;
             if (drawY > topo) {

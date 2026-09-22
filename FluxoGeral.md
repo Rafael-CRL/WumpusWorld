@@ -8,11 +8,11 @@ Este documento percorre o projeto de ponta a ponta: quais classes existem, em qu
 
 ## O retrato geral
 
-O projeto tem doze classes, divididas em dois pacotes com papéis opostos.
+O projeto tem catorze classes, divididas em dois pacotes com papéis opostos.
 
 **`nucleo` — sabe jogar, não sabe desenhar.** Aqui está o jogo inteiro: o mapa, o agente, as regras de pontuação, as condições de vitória e derrota. Nenhum arquivo deste pacote importa a biblioteca gráfica. Se a janela desaparecesse, este pacote continuaria funcionando.
 
-**`grafico` — sabe desenhar, não sabe jogar.** Uma tela e três painéis. Nenhum deles decide nada sobre o jogo: leem o estado e o traduzem em retângulos, círculos e texto.
+**`grafico` — sabe desenhar, não sabe jogar.** Uma tela, três painéis e duas classes de apoio — as cores e as fontes. Nenhuma delas decide nada sobre o jogo: leem o estado e o traduzem em retângulos, círculos e texto.
 
 A ligação entre os dois é estreita de propósito. A tela empurra **um verbo só** para dentro das regras — `executarPasso()` — e recebe de volta apenas consultas: onde está o agente, qual a pontuação, o que há nesta casa, a partida acabou. É mão única: nada do que é desenhado volta para dentro das regras.
 
@@ -48,7 +48,7 @@ A tela cumpre esse contrato porque declara `extends ApplicationAdapter` **(libGD
 
 É aqui, e não no construtor, que a tela se equipa — os pincéis precisam do contexto gráfico, que só passou a existir um passo antes. São quatro providências:
 
-1. **Os dois pincéis e a fonte.** `ShapeRenderer` desenha formas geométricas, `SpriteBatch` desenha texto, e `BitmapFont` **(libGDX)** fornece as letras. São a totalidade das ferramentas de desenho do projeto.
+1. **Os dois pincéis e as fontes.** `ShapeRenderer` desenha formas geométricas, `SpriteBatch` desenha texto, e três `BitmapFont` **(libGDX)** fornecem as letras. Quem as cria é a classe `Fontes`, que rasteriza o DejaVuSans de `assets/fontes` já no tamanho de uso de cada uma. São a totalidade das ferramentas de desenho do projeto.
 2. **A partida.** `new Partida()` monta o jogo: dentro dela nascem um `Mundo` e um `AgenteInteligente`.
 3. **Uma cópia congelada do mapa.** Ela existe por um motivo concreto: durante o jogo, o ouro e a flecha são *removidos* da matriz quando o agente os recolhe. Se a revelação final lesse o mapa vivo, mostraria casas vazias onde estavam os tesouros. A cópia preserva o mapa como ele era no primeiro quadro, e serve só para essa exibição.
 4. **O tratamento de mouse.** Um objeto de subclasse anônima de `InputAdapter` **(libGDX)**, escrito dentro do próprio arquivo da tela. Ele trata o clique no botão de reinício e a rolagem do histórico, repassando os dois ao painel que cuida daquela região. O laço da biblioteca o chama antes do render do quadro, quando houver evento.
@@ -62,6 +62,8 @@ A tela cumpre esse contrato porque declara `extends ApplicationAdapter` **(libGD
 | `PainelTabuleiro` | classe | Converte a matriz em coordenadas e desenha a grade |
 | `PainelInformacoes` | classe | Escreve o estado atual e explica os símbolos |
 | `PainelHistorico` | classe | Registro rolante, desfecho e botão de reinício |
+| `Paleta` | classe | Todas as cores da janela; tabuleiro e legenda leem as mesmas |
+| `Fontes` | classe | Gera as três fontes a partir dos arquivos TTF |
 | `Partida` | classe | Árbitro: conduz o passo e julga o fim |
 | `Mundo` | classe | Dona da verdade: a matriz do mapa e o que se sente nela |
 | `AgenteInteligente` | classe | Decide para onde ir, com memória própria |
@@ -110,7 +112,7 @@ x = margem + coluna × lado
 y = margem + (TAMANHO - 1 - linha) × lado
 ```
 
-A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela. O caminho de volta também existe, do outro lado da tela: o mouse chega com o Y invertido, então o tratamento de clique faz `ALTURA_DA_JANELA - screenY` antes de perguntar ao `PainelHistorico` se o ponto caiu dentro do botão. Mesma conversão, sentido oposto.
+O `lado` não é fixo: vale `500 / TAMANHO`, então a grade ocupa sempre o mesmo quadrado na tela, com casas maiores ou menores conforme o tamanho da matriz. A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela. O caminho de volta também existe, do outro lado da tela: o mouse chega com o Y invertido, então o tratamento de clique faz `ALTURA_DA_JANELA - screenY` antes de perguntar ao `PainelHistorico` se o ponto caiu dentro do botão. Mesma conversão, sentido oposto.
 
 **A decisão do que mostrar.** Para cada casa, o painel pergunta se ela já foi visitada, ou se a partida terminou. Se nenhum dos dois, pinta cinza-escuro e para aí — é assim que a caverna permanece desconhecida enquanto o agente não a explora. Se a casa é conhecida, ele escolhe de qual matriz ler: com a partida encerrada usa a cópia congelada, para o mapa completo aparecer íntegro; durante o jogo usa a matriz viva.
 
@@ -126,7 +128,7 @@ O clique no botão faz uma coisa só: **descarta a `Partida` atual e cria outra*
 
 Vale reparar no que esse gesto prova. Nenhum painel precisa "se resetar", porque nenhum deles guarda algo sobre o jogo — nem posição, nem pontuação, nem mapa. Eles recebem a partida como argumento a cada quadro e a devolvem. O único estado que um painel guarda é o deslocamento da rolagem, e isso é estado da leitura, não da partida. Jogar fora a partida e pedir outra basta, e é a demonstração prática de que a separação entre as duas camadas é real, e não apenas uma organização de pastas.
 
-Ao fechar a janela, o laço chama `dispose()` na tela, que libera a fonte e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
+Ao fechar a janela, o laço chama `dispose()` na tela, que libera as fontes e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
 
 ---
 
