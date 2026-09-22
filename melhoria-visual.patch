@@ -1,0 +1,627 @@
+From 53fe84c5a64e550865788140d7bbbd7108b54f1c Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Tue, 22 Sep 2026 13:37:08 +0000
+Subject: [PATCH] refactor(grafico): paleta, fontes FreeType e grade
+ proporcional ao tamanho da matriz
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Paleta: cores centralizadas; tabuleiro e legenda usam as mesmas constantes
+- Fontes: DejaVuSans de assets/fontes rasterizado no tamanho de uso (fim do setScale)
+- PainelTabuleiro: LADO = 500 / Mundo.TAMANHO e formas proporcionais ao lado
+- Dimensões da janela definidas uma vez em TelaDaPartida e usadas pelo Main
+- Antisserrilhamento 4x e círculos com mais segmentos
+- Documentação ajustada
+
+Nenhuma alteração no pacote nucleo.
+---
+ FluxoGeral.md                                 | 12 ++--
+ FluxoGrafico.md                               | 14 +++--
+ README.md                                     |  6 +-
+ src/main/java/wumpusworld/Main.java           |  4 +-
+ src/main/java/wumpusworld/grafico/Fontes.java | 59 +++++++++++++++++
+ .../wumpusworld/grafico/PainelHistorico.java  | 21 +++----
+ .../grafico/PainelInformacoes.java            | 31 ++++-----
+ .../wumpusworld/grafico/PainelTabuleiro.java  | 63 ++++++++++++-------
+ src/main/java/wumpusworld/grafico/Paleta.java | 33 ++++++++++
+ .../wumpusworld/grafico/TelaDaPartida.java    | 24 +++----
+ 10 files changed, 191 insertions(+), 76 deletions(-)
+ create mode 100644 src/main/java/wumpusworld/grafico/Fontes.java
+ create mode 100644 src/main/java/wumpusworld/grafico/Paleta.java
+
+diff --git a/FluxoGeral.md b/FluxoGeral.md
+index 161ad71..11d8236 100644
+--- a/FluxoGeral.md
++++ b/FluxoGeral.md
+@@ -8,11 +8,11 @@ Este documento percorre o projeto de ponta a ponta: quais classes existem, em qu
+ 
+ ## O retrato geral
+ 
+-O projeto tem doze classes, divididas em dois pacotes com papéis opostos.
++O projeto tem catorze classes, divididas em dois pacotes com papéis opostos.
+ 
+ **`nucleo` — sabe jogar, não sabe desenhar.** Aqui está o jogo inteiro: o mapa, o agente, as regras de pontuação, as condições de vitória e derrota. Nenhum arquivo deste pacote importa a biblioteca gráfica. Se a janela desaparecesse, este pacote continuaria funcionando.
+ 
+-**`grafico` — sabe desenhar, não sabe jogar.** Uma tela e três painéis. Nenhum deles decide nada sobre o jogo: leem o estado e o traduzem em retângulos, círculos e texto.
++**`grafico` — sabe desenhar, não sabe jogar.** Uma tela, três painéis e duas classes de apoio — as cores e as fontes. Nenhuma delas decide nada sobre o jogo: leem o estado e o traduzem em retângulos, círculos e texto.
+ 
+ A ligação entre os dois é estreita de propósito. A tela empurra **um verbo só** para dentro das regras — `executarPasso()` — e recebe de volta apenas consultas: onde está o agente, qual a pontuação, o que há nesta casa, a partida acabou. É mão única: nada do que é desenhado volta para dentro das regras.
+ 
+@@ -48,7 +48,7 @@ A tela cumpre esse contrato porque declara `extends ApplicationAdapter` **(libGD
+ 
+ É aqui, e não no construtor, que a tela se equipa — os pincéis precisam do contexto gráfico, que só passou a existir um passo antes. São quatro providências:
+ 
+-1. **Os dois pincéis e a fonte.** `ShapeRenderer` desenha formas geométricas, `SpriteBatch` desenha texto, e `BitmapFont` **(libGDX)** fornece as letras. São a totalidade das ferramentas de desenho do projeto.
++1. **Os dois pincéis e as fontes.** `ShapeRenderer` desenha formas geométricas, `SpriteBatch` desenha texto, e três `BitmapFont` **(libGDX)** fornecem as letras. Quem as cria é a classe `Fontes`, que rasteriza o DejaVuSans de `assets/fontes` já no tamanho de uso de cada uma. São a totalidade das ferramentas de desenho do projeto.
+ 2. **A partida.** `new Partida()` monta o jogo: dentro dela nascem um `Mundo` e um `AgenteInteligente`.
+ 3. **Uma cópia congelada do mapa.** Ela existe por um motivo concreto: durante o jogo, o ouro e a flecha são *removidos* da matriz quando o agente os recolhe. Se a revelação final lesse o mapa vivo, mostraria casas vazias onde estavam os tesouros. A cópia preserva o mapa como ele era no primeiro quadro, e serve só para essa exibição.
+ 4. **O tratamento de mouse.** Um objeto de subclasse anônima de `InputAdapter` **(libGDX)**, escrito dentro do próprio arquivo da tela. Ele trata o clique no botão de reinício e a rolagem do histórico, repassando os dois ao painel que cuida daquela região. O laço da biblioteca o chama antes do render do quadro, quando houver evento.
+@@ -62,6 +62,8 @@ A tela cumpre esse contrato porque declara `extends ApplicationAdapter` **(libGD
+ | `PainelTabuleiro` | classe | Converte a matriz em coordenadas e desenha a grade |
+ | `PainelInformacoes` | classe | Escreve o estado atual e explica os símbolos |
+ | `PainelHistorico` | classe | Registro rolante, desfecho e botão de reinício |
++| `Paleta` | classe | Todas as cores da janela; tabuleiro e legenda leem as mesmas |
++| `Fontes` | classe | Gera as três fontes a partir dos arquivos TTF |
+ | `Partida` | classe | Árbitro: conduz o passo e julga o fim |
+ | `Mundo` | classe | Dona da verdade: a matriz do mapa e o que se sente nela |
+ | `AgenteInteligente` | classe | Decide para onde ir, com memória própria |
+@@ -110,7 +112,7 @@ x = margem + coluna × lado
+ y = margem + (TAMANHO - 1 - linha) × lado
+ ```
+ 
+-A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela. O caminho de volta também existe, do outro lado da tela: o mouse chega com o Y invertido, então o tratamento de clique faz `ALTURA_DA_JANELA - screenY` antes de perguntar ao `PainelHistorico` se o ponto caiu dentro do botão. Mesma conversão, sentido oposto.
++O `lado` não é fixo: vale `500 / TAMANHO`, então a grade ocupa sempre o mesmo quadrado na tela, com casas maiores ou menores conforme o tamanho da matriz. A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela. O caminho de volta também existe, do outro lado da tela: o mouse chega com o Y invertido, então o tratamento de clique faz `ALTURA_DA_JANELA - screenY` antes de perguntar ao `PainelHistorico` se o ponto caiu dentro do botão. Mesma conversão, sentido oposto.
+ 
+ **A decisão do que mostrar.** Para cada casa, o painel pergunta se ela já foi visitada, ou se a partida terminou. Se nenhum dos dois, pinta cinza-escuro e para aí — é assim que a caverna permanece desconhecida enquanto o agente não a explora. Se a casa é conhecida, ele escolhe de qual matriz ler: com a partida encerrada usa a cópia congelada, para o mapa completo aparecer íntegro; durante o jogo usa a matriz viva.
+ 
+@@ -126,7 +128,7 @@ O clique no botão faz uma coisa só: **descarta a `Partida` atual e cria outra*
+ 
+ Vale reparar no que esse gesto prova. Nenhum painel precisa "se resetar", porque nenhum deles guarda algo sobre o jogo — nem posição, nem pontuação, nem mapa. Eles recebem a partida como argumento a cada quadro e a devolvem. O único estado que um painel guarda é o deslocamento da rolagem, e isso é estado da leitura, não da partida. Jogar fora a partida e pedir outra basta, e é a demonstração prática de que a separação entre as duas camadas é real, e não apenas uma organização de pastas.
+ 
+-Ao fechar a janela, o laço chama `dispose()` na tela, que libera a fonte e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
++Ao fechar a janela, o laço chama `dispose()` na tela, que libera as fontes e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
+ 
+ ---
+ 
+diff --git a/FluxoGrafico.md b/FluxoGrafico.md
+index bdca4ff..e2f371f 100644
+--- a/FluxoGrafico.md
++++ b/FluxoGrafico.md
+@@ -1,6 +1,6 @@
+ # A camada gráfica — do terminal à janela
+ 
+-Este documento trata só da apresentação. Ele parte do mapa impresso em caracteres, mostra o que foi feito para ele virar um tabuleiro desenhado, e percorre as cinco classes que hoje cuidam disso. As regras do jogo não aparecem aqui — elas estão descritas em `FluxoGeral.md`.
++Este documento trata só da apresentação. Ele parte do mapa impresso em caracteres, mostra o que foi feito para ele virar um tabuleiro desenhado, e percorre as classes que hoje cuidam disso. As regras do jogo não aparecem aqui — elas estão descritas em `FluxoGeral.md`.
+ 
+ > **Convenção:** nomes marcados **(libGDX)** vêm da biblioteca gráfica, dentro dos JARs que o Gradle baixa. Todos os outros nomes são arquivos `.java` do projeto.
+ 
+@@ -78,7 +78,7 @@ x = margem + coluna × lado
+ y = margem + (TAMANHO - 1 - linha) × lado
+ ```
+ 
+-A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela, como aparecia no topo da impressão.
++O `lado` vale `500 / TAMANHO`: a grade ocupa sempre o mesmo quadrado, e as formas dentro de cada casa são frações do lado. A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da janela, como aparecia no topo da impressão.
+ 
+ **Repintura, porque não existe rolagem.** A janela não acumula: cada quadro apaga tudo e redesenha do zero, sessenta vezes por segundo. Isso tem uma consequência que não é óbvia — **o histórico teve de ser construído à mão**. O que no terminal era um efeito colateral gratuito (o texto antigo ficava acima) virou uma lista de mensagens guardada pela `Partida` e um painel que a desenha de baixo para cima, com rolagem própria.
+ 
+@@ -86,7 +86,7 @@ A inversão `TAMANHO - 1 - linha` é o que faz a linha 0 aparecer no alto da jan
+ 
+ ## 4. Quem faz o quê
+ 
+-Cinco classes cuidam da apresentação.
++Sete classes cuidam da apresentação.
+ 
+ | Classe | Responsabilidade |
+ |---|---|
+@@ -95,6 +95,8 @@ Cinco classes cuidam da apresentação.
+ | `PainelTabuleiro` | Converte a matriz em coordenadas e desenha a grade |
+ | `PainelInformacoes` | Escreve o estado atual e explica os símbolos |
+ | `PainelHistorico` | Registro rolante, desfecho e botão de reinício |
++| `Paleta` | Todas as cores da janela; tabuleiro e legenda leem as mesmas |
++| `Fontes` | Gera as três fontes a partir dos arquivos TTF |
+ 
+ Vale notar de onde cada painel veio. No terminal, quem imprimia o mapa era o próprio `Mundo`, e quem imprimia pontuação e percepções era o `main` — ou seja, a regra e a apresentação moravam juntas. Hoje o `Mundo` não imprime nada: ele só responde perguntas, e quem pergunta é o painel. É a mesma informação, com a decisão de *como mostrá-la* movida para fora das regras.
+ 
+@@ -108,7 +110,7 @@ O contrato de uso é este: desenhar exige uma janela e um laço a sessenta quadr
+ 
+ Essa primeira chamada é o `create()`, e é nele que a tela se equipa, e não no construtor: os pincéis precisam do contexto gráfico, que só existe depois que a janela abre. São quatro providências:
+ 
+-1. **Os pincéis e a fonte.** `ShapeRenderer` desenha formas, `SpriteBatch` desenha texto, `BitmapFont` **(libGDX)** fornece as letras. São a totalidade das ferramentas de desenho do projeto — não há arquivo de imagem nenhum.
++1. **Os pincéis e as fontes.** `ShapeRenderer` desenha formas, `SpriteBatch` desenha texto, três `BitmapFont` **(libGDX)** fornecem as letras — geradas pela classe `Fontes` a partir do DejaVuSans, já no tamanho de uso, em vez de ampliar uma fonte pronta e borrá-la. São a totalidade das ferramentas de desenho do projeto — não há arquivo de imagem nenhum.
+ 2. **A partida**, que é o jogo em si.
+ 3. **Uma cópia congelada do mapa.** Durante o jogo, o ouro e a flecha são apagados da matriz ao serem recolhidos. Se a revelação final lesse o mapa vivo, mostraria casas vazias onde estavam os tesouros. Esta cópia guarda o mapa como ele era no primeiro quadro, e serve só para essa exibição — é o equivalente ao `revelarTudo` da impressão do terminal, com uma diferença que o obrigou a existir: lá a impressão era imediata e o mapa ainda estava intacto; aqui a revelação acontece no fim, quando a matriz já mudou.
+ 4. **O tratamento de mouse**, descrito na seção 8.
+@@ -147,8 +149,8 @@ O clique faz uma coisa só: descarta a partida atual e cria outra, com nova cóp
+ 
+ ## 9. O fecho
+ 
+-Ao fechar a janela, o laço chama `dispose()` na tela, que libera a fonte e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
++Ao fechar a janela, o laço chama `dispose()` na tela, que libera as fontes e os dois pincéis. Só então o construtor da última linha do `main` — aquele que nunca tinha retornado — finalmente retorna, e o programa termina.
+ 
+ ---
+ 
+-**Em uma frase:** o laço duplo sobre a matriz é o mesmo do terminal; trocou-se `System.out.print(mapa[l][c])` por `formas.circle(...)`, e com isso vieram três obrigações que o terminal cumpria sozinho — calcular coordenadas, repintar a cada quadro e contar o tempo em vez de dormir. As cinco classes de `grafico` existem para dar conta dessas três obrigações, e nenhuma delas decide nada sobre o jogo.
++**Em uma frase:** o laço duplo sobre a matriz é o mesmo do terminal; trocou-se `System.out.print(mapa[l][c])` por `formas.circle(...)`, e com isso vieram três obrigações que o terminal cumpria sozinho — calcular coordenadas, repintar a cada quadro e contar o tempo em vez de dormir. As classes de `grafico` existem para dar conta dessas três obrigações, e nenhuma delas decide nada sobre o jogo.
+diff --git a/README.md b/README.md
+index 50bd48b..6108e11 100644
+--- a/README.md
++++ b/README.md
+@@ -112,7 +112,9 @@ src/main/java/wumpusworld/
+     ├── TelaDaPartida.java         # Conduz o quadro: relógio da simulação, ordem de desenho e captura de clique/scroll
+     ├── PainelTabuleiro.java       # Converte a matriz em coordenadas de tela e desenha a grade, os elementos e o agente
+     ├── PainelInformacoes.java     # Painel de estado (HUD) e legenda dos símbolos
+-    └── PainelHistorico.java       # Histórico rolável, mensagem de resultado e botão "JOGAR NOVAMENTE"
++    ├── PainelHistorico.java       # Histórico rolável, mensagem de resultado e botão "JOGAR NOVAMENTE"
++    ├── Paleta.java                # Todas as cores da janela, compartilhadas por tabuleiro e legenda
++    └── Fontes.java                # Gera as fontes a partir de assets/fontes (DejaVuSans) via gdx-freetype
+ ```
+ 
+ Cada painel expõe dois métodos, `desenharFormas` e `desenharTextos`, porque o `ShapeRenderer` e o `SpriteBatch` da libGDX não podem ficar abertos ao mesmo tempo: a `TelaDaPartida` abre um pincel de cada vez e percorre os três painéis em cada passagem. Nenhum painel guarda estado do jogo — todos recebem a `Partida` como argumento a cada quadro.
+@@ -130,7 +132,7 @@ float y = margemY + (tamanhoMatriz - 1 - linha) * tamanhoCelula;
+ 
+ * **Eixo X**: `x = 50 + coluna * 100` (deslocamento horizontal com base na coluna).
+ * **Eixo Y**: `y = 50 + (4 - linha) * 100` (inversão do eixo vertical para que a linha `0` fique posicionada no topo da grade na tela).
+-* **Parâmetros**: `tamanhoCelula = 100px`, `margemX = 50px`, `margemY = 50px`.
++* **Parâmetros**: `tamanhoCelula = 500 / tamanhoMatriz` (100px na matriz 5×5), `margemX = 50px`, `margemY = 50px`. A grade ocupa sempre o mesmo quadrado de 500px; mudar `Mundo.TAMANHO` redimensiona as casas sem mexer no layout.
+ 
+ A conversão está concentrada nos métodos `x(coluna)` e `y(linha)` de `PainelTabuleiro`, usados por todo o desenho da grade. A conversão inversa aparece uma única vez, no tratamento do clique em `TelaDaPartida`: o mouse chega com o eixo Y invertido, e o ponto é convertido com `ALTURA_DA_JANELA - screenY` antes de ser testado contra o botão.
+ 
+diff --git a/src/main/java/wumpusworld/Main.java b/src/main/java/wumpusworld/Main.java
+index 1dbbfb8..6a5aecc 100644
+--- a/src/main/java/wumpusworld/Main.java
++++ b/src/main/java/wumpusworld/Main.java
+@@ -12,9 +12,11 @@ public final class Main {
+     public static void main(String[] args) {
+         Lwjgl3ApplicationConfiguration configuracao = new Lwjgl3ApplicationConfiguration();
+         configuracao.setTitle("Mundo de Wumpus");
+-        configuracao.setWindowedMode(1000, 700);
++        configuracao.setWindowedMode(TelaDaPartida.LARGURA_DA_JANELA, TelaDaPartida.ALTURA_DA_JANELA);
+         configuracao.setResizable(false);
+         configuracao.setForegroundFPS(60);
++        // 4 amostras por pixel: suaviza a borda dos círculos.
++        configuracao.setBackBufferConfig(8, 8, 8, 8, 16, 0, 4);
+         new Lwjgl3Application(new TelaDaPartida(), configuracao);
+     }
+ }
+diff --git a/src/main/java/wumpusworld/grafico/Fontes.java b/src/main/java/wumpusworld/grafico/Fontes.java
+new file mode 100644
+index 0000000..4dfd301
+--- /dev/null
++++ b/src/main/java/wumpusworld/grafico/Fontes.java
+@@ -0,0 +1,59 @@
++package wumpusworld.grafico;
++
++import com.badlogic.gdx.Gdx;
++import com.badlogic.gdx.graphics.Color;
++import com.badlogic.gdx.graphics.Texture.TextureFilter;
++import com.badlogic.gdx.graphics.g2d.BitmapFont;
++import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
++import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
++import com.badlogic.gdx.utils.Disposable;
++
++/**
++ * As três fontes da janela, geradas a partir dos arquivos em {@code assets/fontes}.
++ *
++ * <p>Cada fonte é rasterizada já no tamanho em que será usada. Ampliar uma
++ * fonte pronta com {@code setScale} borra as letras; gerá-la no tamanho certo,
++ * não.</p>
++ */
++public final class Fontes implements Disposable {
++
++    private static final String REGULAR = "fontes/DejaVuSans.ttf";
++    private static final String NEGRITO = "fontes/DejaVuSans-Bold.ttf";
++
++    /** Estado da partida, histórico e desfecho. */
++    public final BitmapFont texto;
++    /** Títulos e o texto do botão. */
++    public final BitmapFont destaque;
++    /** Numeração dos eixos e rótulos da legenda. */
++    public final BitmapFont pequena;
++
++    public Fontes() {
++        FreeTypeFontGenerator regular = new FreeTypeFontGenerator(Gdx.files.internal(REGULAR));
++        FreeTypeFontGenerator negrito = new FreeTypeFontGenerator(Gdx.files.internal(NEGRITO));
++        try {
++            texto = gerar(regular, 16, Paleta.TEXTO);
++            destaque = gerar(negrito, 16, Paleta.TEXTO);
++            pequena = gerar(regular, 14, Paleta.TEXTO_SUAVE);
++        } finally {
++            regular.dispose();
++            negrito.dispose();
++        }
++    }
++
++    private static BitmapFont gerar(FreeTypeFontGenerator gerador, int tamanho, Color cor) {
++        FreeTypeFontParameter parametro = new FreeTypeFontParameter();
++        parametro.size = tamanho;
++        parametro.minFilter = TextureFilter.Linear;
++        parametro.magFilter = TextureFilter.Linear;
++        BitmapFont fonte = gerador.generateFont(parametro);
++        fonte.setColor(cor);
++        return fonte;
++    }
++
++    @Override
++    public void dispose() {
++        texto.dispose();
++        destaque.dispose();
++        pequena.dispose();
++    }
++}
+diff --git a/src/main/java/wumpusworld/grafico/PainelHistorico.java b/src/main/java/wumpusworld/grafico/PainelHistorico.java
+index 5df803e..601ec57 100644
+--- a/src/main/java/wumpusworld/grafico/PainelHistorico.java
++++ b/src/main/java/wumpusworld/grafico/PainelHistorico.java
+@@ -2,7 +2,6 @@ package wumpusworld.grafico;
+ 
+ import java.util.List;
+ 
+-import com.badlogic.gdx.graphics.Color;
+ import com.badlogic.gdx.graphics.g2d.BitmapFont;
+ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+@@ -63,37 +62,35 @@ public class PainelHistorico {
+ 
+     public void desenharFormas(ShapeRenderer formas, Partida partida) {
+         if (partida.getSituacao().encerrada()) {
+-            formas.setColor(0.15f, 0.55f, 0.25f, 1f);
++            formas.setColor(Paleta.BOTAO);
+             formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
+         }
+     }
+ 
+     /** Chamado na passagem de contorno, separada da passagem preenchida. */
+     public void desenharContornoDoBotao(ShapeRenderer formas) {
+-        formas.setColor(0.35f, 0.85f, 0.45f, 1f);
++        formas.setColor(Paleta.BOTAO_CONTORNO);
+         formas.rect(BOTAO_X, BOTAO_Y, BOTAO_LARGURA, BOTAO_ALTURA);
+     }
+ 
+-    public void desenharTextos(SpriteBatch lote, BitmapFont fonte, Partida partida) {
++    public void desenharTextos(SpriteBatch lote, Fontes fontes, Partida partida) {
+         boolean encerrada = partida.getSituacao().encerrada();
++        BitmapFont fonte = fontes.texto;
+ 
+         if (encerrada) {
+-            fonte.getData().setScale(1.1f);
+             GlyphLayout resultado = new GlyphLayout(fonte,
+-                    partida.getDescricaoResultado(), Color.WHITE, LARGURA_DO_TEXTO, -1, true);
++                    partida.getDescricaoResultado(), Paleta.TEXTO, LARGURA_DO_TEXTO, -1, true);
+             fonte.draw(lote, resultado, COLUNA_X, Y_DO_RESULTADO);
+         }
+ 
+         if (encerrada) {
+-            fonte.getData().setScale(1.15f);
+-            GlyphLayout layoutBotao = new GlyphLayout(fonte, "JOGAR NOVAMENTE");
++            GlyphLayout layoutBotao = new GlyphLayout(fontes.destaque, "JOGAR NOVAMENTE");
+             float tx = BOTAO_X + (BOTAO_LARGURA - layoutBotao.width) / 2f;
+             float ty = BOTAO_Y + (BOTAO_ALTURA + layoutBotao.height) / 2f;
+-            fonte.draw(lote, layoutBotao, tx, ty);
++            fontes.destaque.draw(lote, layoutBotao, tx, ty);
+         }
+ 
+-        fonte.getData().setScale(1.1f);
+-        fonte.draw(lote, "HISTÓRICO DE EVENTOS:", COLUNA_X, Y_DO_TITULO);
++        fontes.destaque.draw(lote, "HISTÓRICO DE EVENTOS:", COLUNA_X, Y_DO_TITULO);
+ 
+         List<String> registro = partida.getRegistro();
+         float topo = encerrada ? TOPO_COM_BOTAO : TOPO_SEM_BOTAO;
+@@ -104,7 +101,7 @@ public class PainelHistorico {
+ 
+         // As entradas mais recentes ficam embaixo, então a lista é montada de trás para frente.
+         for (int i = registro.size() - 1; i >= 0; i--) {
+-            layout.setText(fonte, registro.get(i), Color.WHITE, LARGURA_DO_TEXTO, -1, true);
++            layout.setText(fonte, registro.get(i), Paleta.TEXTO, LARGURA_DO_TEXTO, -1, true);
+ 
+             float drawY = currentY + layout.height;
+             if (drawY > topo) {
+diff --git a/src/main/java/wumpusworld/grafico/PainelInformacoes.java b/src/main/java/wumpusworld/grafico/PainelInformacoes.java
+index cc1ca3d..091c0ac 100644
+--- a/src/main/java/wumpusworld/grafico/PainelInformacoes.java
++++ b/src/main/java/wumpusworld/grafico/PainelInformacoes.java
+@@ -1,6 +1,5 @@
+ package wumpusworld.grafico;
+ 
+-import com.badlogic.gdx.graphics.Color;
+ import com.badlogic.gdx.graphics.g2d.BitmapFont;
+ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+@@ -27,32 +26,35 @@ public class PainelInformacoes {
+     private static final float LEGENDA_LARGURA = 370f;
+     private static final float LEGENDA_ALTURA = 120f;
+ 
++    private static final float RAIO_DO_SIMBOLO = 10f;
++    private static final int SEGMENTOS = 32;
++
+     /** A caixa da legenda e os símbolos dentro dela, nas mesmas cores da grade. */
+     public void desenharFormas(ShapeRenderer formas) {
+-        formas.setColor(0.25f, 0.25f, 0.25f, 1);
++        formas.setColor(Paleta.PAINEL);
+         formas.rect(LEGENDA_X, LEGENDA_Y, LEGENDA_LARGURA, LEGENDA_ALTURA);
+ 
+-        formas.setColor(Color.BLUE);
+-        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 95, 10);
++        formas.setColor(Paleta.AGENTE);
++        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 95, RAIO_DO_SIMBOLO, SEGMENTOS);
+ 
+-        formas.setColor(Color.BLACK);
+-        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 60, 10);
++        formas.setColor(Paleta.POCO);
++        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 60, RAIO_DO_SIMBOLO, SEGMENTOS);
+ 
+-        formas.setColor(Color.RED);
+-        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 25, 10);
++        formas.setColor(Paleta.WUMPUS);
++        formas.circle(LEGENDA_X + 25, LEGENDA_Y + 25, RAIO_DO_SIMBOLO, SEGMENTOS);
+ 
+-        formas.setColor(Color.YELLOW);
++        formas.setColor(Paleta.OURO);
+         formas.rect(LEGENDA_X + 195, LEGENDA_Y + 85, 18, 18);
+ 
+-        formas.setColor(Color.GREEN);
++        formas.setColor(Paleta.FLECHA);
+         formas.rect(LEGENDA_X + 200, LEGENDA_Y + 50, 8, 20);
+     }
+ 
+-    public void desenharTextos(SpriteBatch lote, BitmapFont fonte, Partida partida) {
++    public void desenharTextos(SpriteBatch lote, Fontes fontes, Partida partida) {
+         Posicao posAgente = partida.getAgente().getPosicao();
++        BitmapFont fonte = fontes.texto;
+ 
+-        fonte.getData().setScale(1.2f);
+-        fonte.draw(lote, "Situação: " + partida.getSituacao().getTitulo(), TEXTO_X, Y_SITUACAO);
++        fontes.destaque.draw(lote, "Situação: " + partida.getSituacao().getTitulo(), TEXTO_X, Y_SITUACAO);
+         fonte.draw(lote, "Posição Atual: " + posAgente
+                 + " | Movimentos: " + partida.getAgente().getQuantidadeDeMovimentos()
+                 + " | Pontos: " + partida.getAgente().getPontuacao(), TEXTO_X, Y_ESTADO);
+@@ -71,11 +73,10 @@ public class PainelInformacoes {
+                     TEXTO_X, Y_PERCEPCOES);
+         }
+ 
+-        desenharRotulosDaLegenda(lote, fonte);
++        desenharRotulosDaLegenda(lote, fontes.pequena);
+     }
+ 
+     private void desenharRotulosDaLegenda(SpriteBatch lote, BitmapFont fonte) {
+-        fonte.getData().setScale(1.0f);
+         fonte.draw(lote, "Agente", LEGENDA_X + 45, LEGENDA_Y + 100);
+         fonte.draw(lote, "Poço", LEGENDA_X + 45, LEGENDA_Y + 65);
+         fonte.draw(lote, "Wumpus", LEGENDA_X + 45, LEGENDA_Y + 30);
+diff --git a/src/main/java/wumpusworld/grafico/PainelTabuleiro.java b/src/main/java/wumpusworld/grafico/PainelTabuleiro.java
+index 628e052..62b2bd1 100644
+--- a/src/main/java/wumpusworld/grafico/PainelTabuleiro.java
++++ b/src/main/java/wumpusworld/grafico/PainelTabuleiro.java
+@@ -1,9 +1,9 @@
+ package wumpusworld.grafico;
+ 
+-import com.badlogic.gdx.graphics.Color;
+ import com.badlogic.gdx.graphics.g2d.BitmapFont;
+ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
++import com.badlogic.gdx.utils.Align;
+ import wumpusworld.nucleo.Mundo;
+ import wumpusworld.nucleo.Partida;
+ import wumpusworld.nucleo.Posicao;
+@@ -14,13 +14,30 @@ import wumpusworld.nucleo.Posicao;
+  * <p>É o único ponto do projeto que converte a matriz em coordenadas de tela.
+  * A matriz cresce para baixo e a tela cresce para cima, e essa inversão está
+  * concentrada nos métodos {@link #x(int)} e {@link #y(int)}.</p>
++ *
++ * <p>A grade ocupa sempre o mesmo quadrado de {@value #AREA} pixels. O lado de
++ * cada casa, e o tamanho de tudo que vai dentro dela, é derivado de
++ * {@link Mundo#TAMANHO}: mudar o tamanho da matriz não exige mexer aqui.</p>
+  */
+ public class PainelTabuleiro {
+ 
+-    private static final float LADO = 100f;
++    private static final float AREA = 500f;
++    private static final float LADO = AREA / Mundo.TAMANHO;
+     private static final float MARGEM_X = 50f;
+     private static final float MARGEM_Y = 50f;
+ 
++    /** Folga entre casas vizinhas. */
++    private static final float ESPACO = 2f;
++
++    private static final float RAIO_DO_ELEMENTO = 0.28f * LADO;
++    private static final float RAIO_DO_AGENTE = 0.20f * LADO;
++    private static final float MEIO_LADO_DO_OURO = 0.20f * LADO;
++    private static final float MEIA_LARGURA_DA_FLECHA = 0.05f * LADO;
++    private static final float MEIA_ALTURA_DA_FLECHA = 0.20f * LADO;
++
++    /** Acima do padrão da libGDX, para os círculos não parecerem polígonos. */
++    private static final int SEGMENTOS = 48;
++
+     /** Borda esquerda da casa que está na coluna informada. */
+     private float x(int coluna) {
+         return MARGEM_X + coluna * LADO;
+@@ -39,12 +56,8 @@ public class PainelTabuleiro {
+ 
+                 boolean conhecida = partida.getMundo().foiVisitada(l, c) || partida.mapaDeveSerRevelado();
+ 
+-                if (conhecida) {
+-                    formas.setColor(0.75f, 0.75f, 0.75f, 1);
+-                } else {
+-                    formas.setColor(0.3f, 0.3f, 0.3f, 1);
+-                }
+-                formas.rect(x + 2, y + 2, LADO - 4, LADO - 4);
++                formas.setColor(conhecida ? Paleta.CASA_CONHECIDA : Paleta.CASA_DESCONHECIDA);
++                formas.rect(x + ESPACO, y + ESPACO, LADO - 2 * ESPACO, LADO - 2 * ESPACO);
+ 
+                 if (conhecida) {
+                     char elem = partida.mapaDeveSerRevelado()
+@@ -54,36 +67,40 @@ public class PainelTabuleiro {
+                     float cy = y + LADO / 2;
+ 
+                     if (elem == Mundo.POCO) {
+-                        formas.setColor(Color.BLACK);
+-                        formas.circle(cx, cy, 28);
++                        formas.setColor(Paleta.POCO);
++                        formas.circle(cx, cy, RAIO_DO_ELEMENTO, SEGMENTOS);
+                     } else if (elem == Mundo.WUMPUS) {
+-                        formas.setColor(Color.RED);
+-                        formas.circle(cx, cy, 28);
++                        formas.setColor(Paleta.WUMPUS);
++                        formas.circle(cx, cy, RAIO_DO_ELEMENTO, SEGMENTOS);
+                     } else if (elem == Mundo.OURO) {
+-                        formas.setColor(Color.YELLOW);
+-                        formas.rect(cx - 20, cy - 20, 40, 40);
++                        formas.setColor(Paleta.OURO);
++                        formas.rect(cx - MEIO_LADO_DO_OURO, cy - MEIO_LADO_DO_OURO,
++                                2 * MEIO_LADO_DO_OURO, 2 * MEIO_LADO_DO_OURO);
+                     } else if (elem == Mundo.FLECHA) {
+-                        formas.setColor(Color.GREEN);
+-                        formas.rect(cx - 5, cy - 20, 10, 40);
++                        formas.setColor(Paleta.FLECHA);
++                        formas.rect(cx - MEIA_LARGURA_DA_FLECHA, cy - MEIA_ALTURA_DA_FLECHA,
++                                2 * MEIA_LARGURA_DA_FLECHA, 2 * MEIA_ALTURA_DA_FLECHA);
+                     }
+                 }
+             }
+         }
+ 
+         Posicao pos = partida.getAgente().getPosicao();
+-        formas.setColor(Color.BLUE);
+-        formas.circle(x(pos.coluna()) + LADO / 2, y(pos.linha()) + LADO / 2, 20);
++        formas.setColor(Paleta.AGENTE);
++        formas.circle(x(pos.coluna()) + LADO / 2, y(pos.linha()) + LADO / 2, RAIO_DO_AGENTE, SEGMENTOS);
+     }
+ 
+-    /** Numeração das colunas embaixo e das linhas à esquerda da grade. */
+-    public void desenharTextos(SpriteBatch lote, BitmapFont fonte) {
+-        fonte.getData().setScale(1.1f);
++    /** Numeração das colunas embaixo e das linhas à esquerda, centrada em cada casa. */
++    public void desenharTextos(SpriteBatch lote, Fontes fontes) {
++        BitmapFont fonte = fontes.pequena;
++        float meiaAltura = fonte.getCapHeight() / 2;
+ 
+         for (int c = 0; c < Mundo.TAMANHO; c++) {
+-            fonte.draw(lote, String.valueOf(c), x(c) + LADO / 2 - 5, MARGEM_Y - 12);
++            fonte.draw(lote, String.valueOf(c), x(c), MARGEM_Y - 12, LADO, Align.center, false);
+         }
+         for (int l = 0; l < Mundo.TAMANHO; l++) {
+-            fonte.draw(lote, String.valueOf(l), MARGEM_X - 25, y(l) + LADO / 2 + 7);
++            fonte.draw(lote, String.valueOf(l), MARGEM_X - 40, y(l) + LADO / 2 + meiaAltura,
++                    30, Align.right, false);
+         }
+     }
+ }
+diff --git a/src/main/java/wumpusworld/grafico/Paleta.java b/src/main/java/wumpusworld/grafico/Paleta.java
+new file mode 100644
+index 0000000..f9f7fdf
+--- /dev/null
++++ b/src/main/java/wumpusworld/grafico/Paleta.java
+@@ -0,0 +1,33 @@
++package wumpusworld.grafico;
++
++import com.badlogic.gdx.graphics.Color;
++
++/**
++ * Todas as cores da janela, num lugar só.
++ *
++ * <p>O tabuleiro e a legenda leem daqui as mesmas constantes, e por isso
++ * nunca podem discordar sobre o que cada forma significa.</p>
++ */
++public final class Paleta {
++
++    public static final Color FUNDO = Color.valueOf("1C1F26");
++    public static final Color PAINEL = Color.valueOf("262A33");
++
++    public static final Color CASA_DESCONHECIDA = Color.valueOf("323845");
++    public static final Color CASA_CONHECIDA = Color.valueOf("BFC6D0");
++
++    public static final Color POCO = Color.valueOf("15171C");
++    public static final Color WUMPUS = Color.valueOf("C94A4A");
++    public static final Color OURO = Color.valueOf("D4961F");
++    public static final Color FLECHA = Color.valueOf("3F8F5C");
++    public static final Color AGENTE = Color.valueOf("3D7BD9");
++
++    public static final Color BOTAO = Color.valueOf("2E8B4F");
++    public static final Color BOTAO_CONTORNO = Color.valueOf("6FD18E");
++
++    public static final Color TEXTO = Color.valueOf("E4E7EC");
++    public static final Color TEXTO_SUAVE = Color.valueOf("9AA3B0");
++
++    private Paleta() {
++    }
++}
+diff --git a/src/main/java/wumpusworld/grafico/TelaDaPartida.java b/src/main/java/wumpusworld/grafico/TelaDaPartida.java
+index 58a6a74..2ecdcdf 100644
+--- a/src/main/java/wumpusworld/grafico/TelaDaPartida.java
++++ b/src/main/java/wumpusworld/grafico/TelaDaPartida.java
+@@ -3,10 +3,9 @@ package wumpusworld.grafico;
+ import com.badlogic.gdx.ApplicationAdapter;
+ import com.badlogic.gdx.Gdx;
+ import com.badlogic.gdx.InputAdapter;
+-import com.badlogic.gdx.graphics.GL20;
+-import com.badlogic.gdx.graphics.g2d.BitmapFont;
+ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
++import com.badlogic.gdx.utils.ScreenUtils;
+ import wumpusworld.nucleo.Mundo;
+ import wumpusworld.nucleo.Partida;
+ 
+@@ -19,7 +18,10 @@ import wumpusworld.nucleo.Partida;
+  */
+ public class TelaDaPartida extends ApplicationAdapter {
+ 
+-    private static final float ALTURA_DA_JANELA = 700f;
++    /** Dimensões da janela. O {@code Main} as usa para abri-la; o clique, para converter o eixo Y. */
++    public static final int LARGURA_DA_JANELA = 1000;
++    public static final int ALTURA_DA_JANELA = 700;
++
+     private static final float INTERVALO_DO_PASSO = 0.5f;
+ 
+     private final PainelTabuleiro painelTabuleiro = new PainelTabuleiro();
+@@ -28,7 +30,7 @@ public class TelaDaPartida extends ApplicationAdapter {
+ 
+     private SpriteBatch lote;
+     private ShapeRenderer formas;
+-    private BitmapFont fonte;
++    private Fontes fontes;
+     private Partida partida;
+ 
+     /**
+@@ -44,8 +46,7 @@ public class TelaDaPartida extends ApplicationAdapter {
+     public void create() {
+         this.lote = new SpriteBatch();
+         this.formas = new ShapeRenderer();
+-        this.fonte = new BitmapFont();
+-        this.fonte.getData().setScale(1.3f);
++        this.fontes = new Fontes();
+         iniciarNovaPartida();
+ 
+         Gdx.input.setInputProcessor(new InputAdapter() {
+@@ -80,8 +81,7 @@ public class TelaDaPartida extends ApplicationAdapter {
+     @Override
+     public void render() {
+         float delta = Gdx.graphics.getDeltaTime();
+-        Gdx.gl.glClearColor(0.18f, 0.18f, 0.18f, 1);
+-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
++        ScreenUtils.clear(Paleta.FUNDO);
+ 
+         // A janela se redesenha a cada quadro; o jogo avança a cada meio segundo.
+         if (!partida.getSituacao().encerrada()) {
+@@ -107,15 +107,15 @@ public class TelaDaPartida extends ApplicationAdapter {
+         }
+ 
+         lote.begin();
+-        painelTabuleiro.desenharTextos(lote, fonte);
+-        painelInformacoes.desenharTextos(lote, fonte, partida);
+-        painelHistorico.desenharTextos(lote, fonte, partida);
++        painelTabuleiro.desenharTextos(lote, fontes);
++        painelInformacoes.desenharTextos(lote, fontes, partida);
++        painelHistorico.desenharTextos(lote, fontes, partida);
+         lote.end();
+     }
+ 
+     @Override
+     public void dispose() {
+-        fonte.dispose();
++        fontes.dispose();
+         lote.dispose();
+         formas.dispose();
+     }
+-- 
+2.43.0
+
