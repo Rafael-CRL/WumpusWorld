@@ -109,8 +109,13 @@ src/main/java/wumpusworld/
 │   └── Situacao.java              # Estado do jogo (EM_ANDAMENTO, VITORIA, MORTE, LIMITE_ATINGIDO)
 │
 └── grafico/                       # Renderização e Interface de Usuário
-    └── TelaDaPartida.java         # Renderizador LibGDX, gerenciamento de eventos e captura de clique/scroll
+    ├── TelaDaPartida.java         # Conduz o quadro: relógio da simulação, ordem de desenho e captura de clique/scroll
+    ├── PainelTabuleiro.java       # Converte a matriz em coordenadas de tela e desenha a grade, os elementos e o agente
+    ├── PainelInformacoes.java     # Painel de estado (HUD) e legenda dos símbolos
+    └── PainelHistorico.java       # Histórico rolável, mensagem de resultado e botão "JOGAR NOVAMENTE"
 ```
+
+Cada painel expõe dois métodos, `desenharFormas` e `desenharTextos`, porque o `ShapeRenderer` e o `SpriteBatch` da libGDX não podem ficar abertos ao mesmo tempo: a `TelaDaPartida` abre um pincel de cada vez e percorre os três painéis em cada passagem. Nenhum painel guarda estado do jogo — todos recebem a `Partida` como argumento a cada quadro.
 
 ---
 
@@ -127,8 +132,20 @@ float y = margemY + (tamanhoMatriz - 1 - linha) * tamanhoCelula;
 * **Eixo Y**: `y = 50 + (4 - linha) * 100` (inversão do eixo vertical para que a linha `0` fique posicionada no topo da grade na tela).
 * **Parâmetros**: `tamanhoCelula = 100px`, `margemX = 50px`, `margemY = 50px`.
 
+A conversão está concentrada nos métodos `x(coluna)` e `y(linha)` de `PainelTabuleiro`, usados por todo o desenho da grade. A conversão inversa aparece uma única vez, no tratamento do clique em `TelaDaPartida`: o mouse chega com o eixo Y invertido, e o ponto é convertido com `ALTURA_DA_JANELA - screenY` antes de ser testado contra o botão.
 
-## 8. Verificação do checklist
+---
+
+## 8. Documentação Complementar
+
+Dois documentos detalham o funcionamento interno do projeto:
+
+* **`FluxoGeral.md`** — o fluxo de execução de ponta a ponta: a ordem em que as classes são criadas, quem chama quem, o passo do agente em seis etapas e a fronteira entre as regras e a interface.
+* **`FluxoGrafico.md`** — a camada gráfica em detalhe, partindo do mapa impresso em caracteres da versão de terminal e mostrando o que foi necessário para transformá-lo em um tabuleiro desenhado.
+
+---
+
+## 9. Verificação do checklist
 
 - [x] Regras de risco, pontuação e retorno preservadas: a interface chama `Partida.executarPasso()` e consulta o núcleo, sem alterar suas decisões.
 - [x] Movimento automático sem espera bloqueante: `render()` acumula `Gdx.graphics.getDeltaTime()` e executa um passo a cada 0,5 segundo. Esse mecanismo do ciclo da libGDX equivale à atualização periódica solicitada; não utiliza `Thread.sleep`.
